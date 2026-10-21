@@ -101,6 +101,18 @@ export function LedgerPage({ kind }: { kind: OutletKind }) {
       )}
       <div style={{ height: 16 }} />
       <SoldierLookup selected={soldier} onSelect={setSoldier} />
+      {outletId && (
+        <SectionCard title="كشف حساب الكانتين الشهري" subtitle="اختر العسكري والشهر ثم معاينة أو طباعة أو حفظ PDF">
+          <Stack direction="row" spacing={2} sx={{ mb: 2, alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <TextField label="شهر الحساب" type="month" value={month} onChange={(e) => setMonth(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ maxWidth: 220 }} />
+          </Stack>
+          {soldier ? (
+            <DocButtons doc={{ type: 'canteen-statement', soldierId: soldier.id, month, outletId }} />
+          ) : (
+            <Alert severity="info">اختر العسكري من البحث أعلاه لتظهر أزرار معاينة وطباعة كشف الحساب.</Alert>
+          )}
+        </SectionCard>
+      )}
       {soldier && outletId && (
         <>
           <Grid container spacing={2} sx={{ mb: 2.5 }}>
@@ -108,21 +120,13 @@ export function LedgerPage({ kind }: { kind: OutletKind }) {
             <Grid size={{ xs: 12, sm: 6 }}><KpiCard label="عدد العمليات" value={rows.length} icon={ListIcon} tone="blue" loading={ledger.isPending} /></Grid>
           </Grid>
           <Grid container spacing={2.5}>
-            <Grid size={{ xs: 12, md: 5 }}>
+            <Grid size={{ xs: 12 }}>
               <SectionCard title="تسجيل مشتريات">
                 <Stack component="form" onSubmit={submit} spacing={2} noValidate>
                   <TextField label="المبلغ بالجنيه" value={amount} onChange={(e) => setAmount(e.target.value)} slotProps={{ htmlInput: { inputMode: 'decimal', dir: 'ltr' } }} />
                   <TextField label="ملاحظات" value={notes} onChange={(e) => setNotes(e.target.value)} />
                   <Button type="submit" variant="contained" loading={purchase.isPending}>تسجيل المشتريات</Button>
                 </Stack>
-              </SectionCard>
-            </Grid>
-            <Grid size={{ xs: 12, md: 7 }}>
-              <SectionCard title="كشف الحساب الشهري">
-                <Stack direction="row" spacing={2} sx={{ mb: 2, alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                  <TextField label="شهر الحساب" type="month" value={month} onChange={(e) => setMonth(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ maxWidth: 220 }} />
-                </Stack>
-                <DocButtons doc={{ type: 'canteen-statement', soldierId: soldier.id, month, outletId }} />
               </SectionCard>
             </Grid>
           </Grid>
