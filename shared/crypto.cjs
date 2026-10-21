@@ -9,11 +9,18 @@ function keyPair() {
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
   });
 }
-function digest(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
-function sign(privateKey, value) { return crypto.sign(null, Buffer.from(value), privateKey).toString('base64'); }
+function digest(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+function sign(privateKey, value) {
+  return crypto.sign(null, Buffer.from(value), privateKey).toString('base64');
+}
 function verify(publicKey, value, signature) {
-  try { return crypto.verify(null, Buffer.from(value), publicKey, Buffer.from(signature, 'base64')); }
-  catch { return false; }
+  try {
+    return crypto.verify(null, Buffer.from(value), publicKey, Buffer.from(signature, 'base64'));
+  } catch {
+    return false;
+  }
 }
 function fingerprint(publicKey) {
   return digest(crypto.createPublicKey(publicKey).export({ type: 'spki', format: 'der' }));

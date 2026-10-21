@@ -26,4 +26,6 @@ const manifest = {
 };
 
 fs.writeFileSync(path.join(privateDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
-console.log('Wrote private/manifest.json — run: npm.cmd run license -- issue private/issuer-private.pem private/manifest.json private/license.json');
+console.log(
+  'Wrote private/manifest.json — run: npm.cmd run license -- issue private/issuer-private.pem private/manifest.json private/license.json',
+);

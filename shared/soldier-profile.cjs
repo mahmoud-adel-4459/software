@@ -23,22 +23,36 @@ const GATE_PROFILE_ROWS = [
 ];
 
 const DETAIL_FIELD_KEYS = [
-  'cardNo', 'originalUnit', 'specialty', 'enlistDate', 'dischargeDate', 'weaponNo', 'unitJoinDate',
-  'birthDate', 'height', 'weight', 'age', 'offDutyJob',
+  'cardNo',
+  'originalUnit',
+  'specialty',
+  'enlistDate',
+  'dischargeDate',
+  'weaponNo',
+  'unitJoinDate',
+  'birthDate',
+  'height',
+  'weight',
+  'age',
+  'offDutyJob',
 ];
 
 const PHOTO_KINDS = ['photo', 'idPhoto', 'carnetFront', 'carnetBack'];
 const PHOTO_KIND_LABELS = {
   photo: 'صورة 4×6',
   idPhoto: 'صورة البطاقة',
-  carnetFront: 'الكarnet العسكري — الوجه',
-  carnetBack: 'الكarnet العسكري — الظهر',
+  carnetFront: 'الكارنيه العسكري — الوجه',
+  carnetBack: 'الكارنيه العسكري — الظهر',
 };
 const GATE_READABLE_ATTACHMENTS = ['photo', 'idPhoto', 'carnetFront', 'carnetBack', 'tagPhoto'];
 
 function parseDetails(raw) {
   if (!raw || typeof raw === 'object') return raw || {};
-  try { return JSON.parse(raw); } catch { return {}; }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
 }
 
 function computeAge(birthDate) {
@@ -61,29 +75,27 @@ function fieldValue(soldier, row) {
 }
 
 function gateProfileRows(soldier) {
-  return GATE_PROFILE_ROWS.map(row => ({
+  return GATE_PROFILE_ROWS.map((row) => ({
     label: row.label,
     value: fieldValue(soldier, row) || '—',
   }));
 }
 
 function buildQrPayload(soldier) {
-  const body = { v: 2, mn: soldier.military_no };
-  for (const row of GATE_PROFILE_ROWS) {
-    const v = fieldValue(soldier, row);
-    if (v && v !== '—') body[row.key] = v;
-  }
-  return JSON.stringify(body);
+  // Digits only: USB scanners act as a keyboard and corrupt JSON/Arabic characters.
+  return String(soldier.military_no);
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function buildVisitorQrPayload(visitor) {
-  return JSON.stringify({ v: 2, t: 'visitor', id: visitor.id, name: visitor.name, badge: visitor.badge_no });
+  return String(visitor.id);
 }
 
 function parseGateScan(raw) {
-  const text = String(raw ?? '').trim();
+  const text = String(raw ?? '')
+    .trim()
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
   if (!text) return { kind: 'none' };
   if (text.startsWith('{')) {
     try {
@@ -93,7 +105,10 @@ function parseGateScan(raw) {
       }
       const mn = String(data.mn || data.military_no || data.militaryNo || '').trim();
       if (mn) return { kind: 'soldier', militaryNo: mn };
-    } catch { /* fall through */ }
+    } catch {
+      const m = /"mn"\s*:\s*"(\d{6,30})"/.exec(text);
+      if (m) return { kind: 'soldier', militaryNo: m[1] };
+    }
   }
   if (UUID_RE.test(text)) return { kind: 'visitor', id: text };
   return { kind: 'soldier', militaryNo: text };

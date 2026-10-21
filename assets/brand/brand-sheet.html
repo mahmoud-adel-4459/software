@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>منظومة شؤون الوحدة الداخلية</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #0a1628;
+      --navy-mid: #112040;
+      --gold: #c9a227;
+      --gold-light: #e8c547;
+      --gold-dark: #8f6e10;
+      --silver: #c0c0c0;
+      --white: #f8f5ee;
+      --red-accent: #8b1a1a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--navy);
+      font-family: 'Cairo', 'Amiri', serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .logo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      padding: 50px;
+      animation: fadeIn 1.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .emblem {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      filter: drop-shadow(0 0 30px rgba(201,162,39,0.45));
+      transition: transform 0.4s ease, filter 0.4s ease;
+    }
+    .emblem:hover {
+      transform: scale(1.04) rotate(1deg);
+      filter: drop-shadow(0 0 50px rgba(201,162,39,0.75));
+    }
+
+    .title-block { text-align: center; line-height: 1.4; }
+    .title-ar {
+      font-family: 'Cairo', serif;
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--gold-light);
+      letter-spacing: 1px;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+    }
+    .subtitle-ar {
+      font-family: 'Amiri', serif;
+      font-size: 1.1rem;
+      color: var(--silver);
+      margin-top: 6px;
+      opacity: 0.85;
+    }
+
+    .divider { display: flex; align-items: center; gap: 12px; width: 380px; }
+    .divider-line { flex: 1; height: 1px; background: linear-gradient(to left, transparent, var(--gold), transparent); }
+    .divider-star { color: var(--gold); font-size: 1rem; }
+
+    .palette-section { margin-top: 50px; text-align: center; }
+    .palette-title { color: var(--gold); font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px; font-family: 'Cairo', sans-serif; }
+    .palette-swatches { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .swatch { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .swatch-box { width: 60px; height: 60px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .swatch-name { font-size: 0.7rem; color: var(--silver); font-family: 'Cairo', sans-serif; }
+
+    .type-section { margin-top: 50px; text-align: center; padding: 30px; border: 1px solid rgba(201,162,39,0.15); border-radius: 16px; width: 420px; max-width: 90vw; }
+    .type-label { color: var(--gold); font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 10px; }
+    .type-sample-h { font-size: 1.4rem; font-weight: 900; color: var(--white); }
+    .type-sample-b { font-size: 1rem; color: var(--silver); font-family: 'Amiri', serif; }
+    .type-sample-s { font-size: 0.8rem; color: rgba(255,255,255,0.45); margin-top: 4px; }
+
+    footer { margin-top: 60px; margin-bottom: 40px; color: rgba(255,255,255,0.2); font-size: 0.7rem; letter-spacing: 2px; font-family: 'Cairo', sans-serif; }
+  </style>
+</head>
+<body>
+
+  <div class="logo-wrap">
+    <div class="emblem">
+      <svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg" width="260" height="260">
+        <defs>
+          <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#1a2f50"/>
+            <stop offset="100%" stop-color="#0a1628"/>
+          </radialGradient>
+          <linearGradient id="goldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#e8c547"/>
+            <stop offset="100%" stop-color="#a07820"/>
+          </linearGradient>
+          <linearGradient id="swordGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#e0e0e0"/>
+            <stop offset="100%" stop-color="#888"/>
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2.5" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <circle cx="130" cy="130" r="127" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="4"/>
+        <circle cx="130" cy="130" r="112" fill="none" stroke="#c9a227" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <circle cx="130" cy="130" r="104" fill="none" stroke="rgba(201,162,39,0.3)" stroke-width="0.8"/>
+
+        <path d="M130,50 L175,70 L175,115 Q175,155 130,185 Q85,155 85,115 L85,70 Z"
+              fill="rgba(201,162,39,0.08)" stroke="url(#goldGrad)" stroke-width="1.5"/>
+
+        <g transform="rotate(-30,130,130)">
+          <rect x="126" y="60" width="4" height="95" rx="1" fill="url(#swordGrad)"/>
+          <polygon points="128,55 130,47 132,55" fill="#bbb"/>
+          <rect x="118" y="148" width="24" height="5" rx="2" fill="#888"/>
+          <rect x="127" y="152" width="6" height="18" rx="2" fill="#c9a227"/>
+        </g>
+        <g transform="rotate(30,130,130)">
+          <rect x="126" y="60" width="4" height="95" rx="1" fill="url(#swordGrad)"/>
+          <polygon points="128,55 130,47 132,55" fill="#bbb"/>
+          <rect x="118" y="148" width="24" height="5" rx="2" fill="#888"/>
+          <rect x="127" y="152" width="6" height="18" rx="2" fill="#c9a227"/>
+        </g>
+
+        <g filter="url(#glow)">
+          <path d="M130,110 Q105,100 80,88 Q90,105 100,115 Q105,118 115,120 Z" fill="url(#goldGrad)"/>
+          <path d="M130,115 Q108,108 88,98 Q95,112 105,120 Z" fill="#e8c547" opacity="0.5"/>
+          <path d="M130,110 Q155,100 180,88 Q170,105 160,115 Q155,118 145,120 Z" fill="url(#goldGrad)"/>
+          <path d="M130,115 Q152,108 172,98 Q165,112 155,120 Z" fill="#e8c547" opacity="0.5"/>
+          <path d="M80,88 Q72,95 70,104 Q80,100 88,98 Z" fill="url(#goldGrad)"/>
+          <path d="M80,88 Q75,98 76,110 Q84,104 88,98 Z" fill="#c9a227"/>
+          <path d="M180,88 Q188,95 190,104 Q180,100 172,98 Z" fill="url(#goldGrad)"/>
+          <path d="M180,88 Q185,98 184,110 Q176,104 172,98 Z" fill="#c9a227"/>
+          <ellipse cx="130" cy="128" rx="18" ry="24" fill="url(#goldGrad)"/>
+          <ellipse cx="130" cy="104" rx="12" ry="13" fill="url(#goldGrad)"/>
+          <path d="M130,110 L125,116 L130,113 Z" fill="#e8c547"/>
+          <circle cx="126" cy="102" r="2.5" fill="#0a1628"/>
+          <circle cx="126" cy="102" r="1" fill="#fff"/>
+          <path d="M118,148 Q110,155 105,162 M118,148 Q113,158 110,165 M118,148 Q115,160 115,167"
+                stroke="#c9a227" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M142,148 Q150,155 155,162 M142,148 Q147,158 150,165 M142,148 Q145,160 145,167"
+                stroke="#c9a227" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M122,122 L138,122 L140,140 L130,148 L120,140 Z"
+                fill="#0a1628" stroke="url(#goldGrad)" stroke-width="1"/>
+          <line x1="130" y1="122" x2="130" y2="148" stroke="url(#goldGrad)" stroke-width="1.2"/>
+        </g>
+
+        <g transform="translate(15,148) rotate(-5)">
+          <ellipse cx="0" cy="0" rx="7" ry="3.5" fill="#c9a227" opacity="0.8" transform="rotate(-20)"/>
+          <ellipse cx="10" cy="-6" rx="7" ry="3.5" fill="#c9a227" opacity="0.8" transform="rotate(-35)"/>
+          <ellipse cx="18" cy="-14" rx="7" ry="3.5" fill="#c9a227" opacity="0.75" transform="rotate(-50)"/>
+          <ellipse cx="24" cy="-22" rx="6" ry="3" fill="#c9a227" opacity="0.7" transform="rotate(-65)"/>
+          <ellipse cx="28" cy="-32" rx="5" ry="2.5" fill="#c9a227" opacity="0.6" transform="rotate(-80)"/>
+          <line x1="0" y1="0" x2="28" y2="-36" stroke="#8f6e10" stroke-width="1"/>
+        </g>
+        <g transform="translate(245,148) rotate(185)">
+          <ellipse cx="0" cy="0" rx="7" ry="3.5" fill="#c9a227" opacity="0.8" transform="rotate(-20)"/>
+          <ellipse cx="10" cy="-6" rx="7" ry="3.5" fill="#c9a227" opacity="0.8" transform="rotate(-35)"/>
+          <ellipse cx="18" cy="-14" rx="7" ry="3.5" fill="#c9a227" opacity="0.75" transform="rotate(-50)"/>
+          <ellipse cx="24" cy="-22" rx="6" ry="3" fill="#c9a227" opacity="0.7" transform="rotate(-65)"/>
+          <ellipse cx="28" cy="-32" rx="5" ry="2.5" fill="#c9a227" opacity="0.6" transform="rotate(-80)"/>
+          <line x1="0" y1="0" x2="28" y2="-36" stroke="#8f6e10" stroke-width="1"/>
+        </g>
+
+        <text x="95"  y="220" fill="#c9a227" font-size="10" text-anchor="middle">★</text>
+        <text x="115" y="226" fill="#c9a227" font-size="10" text-anchor="middle">★</text>
+        <text x="130" y="228" fill="#e8c547" font-size="12" text-anchor="middle">★</text>
+        <text x="145" y="226" fill="#c9a227" font-size="10" text-anchor="middle">★</text>
+        <text x="165" y="220" fill="#c9a227" font-size="10" text-anchor="middle">★</text>
+
+        <path id="topArc" d="M 30,130 A 100,100 0 0,1 230,130" fill="none"/>
+        <text font-family="Cairo,Arial" font-size="13" font-weight="700" fill="#e8c547" letter-spacing="1">
+          <textPath href="#topArc" startOffset="10%">منظومة شؤون الوحدة الداخلية</textPath>
+        </text>
+
+        <path id="botArc" d="M 38,140 A 100,100 0 0,0 222,140" fill="none"/>
+        <text font-family="Cairo,Arial" font-size="11" font-weight="600" fill="#c9a227" letter-spacing="1">
+          <textPath href="#botArc" startOffset="20%">نظام إدارة متكامل</textPath>
+        </text>
+
+        <g opacity="0.07">
+          <polygon points="105,185 130,155 155,185" fill="#c9a227"/>
+          <polygon points="90,185 108,162 126,185" fill="#c9a227"/>
+          <polygon points="134,185 152,162 170,185" fill="#c9a227"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="title-block">
+      <div class="title-ar">منظومة شؤون الوحدة الداخلية</div>
+      <div class="subtitle-ar">نظام إدارة متكامل · القوات المسلحة المصرية</div>
+    </div>
+
+    <div class="divider">
+      <div class="divider-line"></div>
+      <span class="divider-star">✦ ✦ ✦</span>
+      <div class="divider-line"></div>
+    </div>
+  </div>
+
+  <div class="palette-section">
+    <div class="palette-title">الهوية اللونية</div>
+    <div class="palette-swatches">
+      <div class="swatch"><div class="swatch-box" style="background:#0a1628;"></div><div class="swatch-name">نيلي داكن<br/>#0a1628</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#112040;"></div><div class="swatch-name">كحلي<br/>#112040</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#c9a227;"></div><div class="swatch-name">ذهبي<br/>#c9a227</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#e8c547;"></div><div class="swatch-name">ذهبي فاتح<br/>#e8c547</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#c0c0c0;"></div><div class="swatch-name">فضي<br/>#c0c0c0</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#8b1a1a;"></div><div class="swatch-name">أحمر عسكري<br/>#8b1a1a</div></div>
+    </div>
+  </div>
+
+  <div class="type-section">
+    <div class="type-label">الخطوط المعتمدة</div>
+    <div class="type-sample-h" style="font-family:'Cairo',serif; color:#e8c547;">خط القاهرة · Cairo</div>
+    <div class="type-sample-b" style="font-family:'Amiri',serif;">خط الأميري للعناوين الرسمية · Amiri</div>
+    <div class="type-sample-s">للنصوص الثانوية والتسميات الفنية</div>
+  </div>
+
+  <footer>منظومة شؤون الوحدة الداخلية · نظام إدارة متكامل · ٢٠٢٦</footer>
+
+</body>
+</html>

@@ -5,45 +5,66 @@
   "description": "Arabic military affairs LAN desktop client and server",
   "main": "desktop/main.cjs",
   "scripts": {
-    "start": "electron .",
-    "start:standalone": "electron . -- --standalone",
-    "preview:local": "node scripts/local-preview.cjs",
-    "server": "node --env-file=.env server/start.cjs",
-    "server:init": "node --env-file=.env server/setup.cjs",
-    "server:activation": "node --env-file=.env server/request-activation.cjs",
-    "test": "node --test --test-isolation=none tests/*.test.cjs",
-    "test:all": "npm run check && npm test",
-    "test:app": "node --test --test-isolation=none tests/e2e-full.test.cjs tests/renderer.test.cjs tests/ui.test.cjs",
-    "test:e2e": "node --test --test-isolation=none tests/e2e-full.test.cjs",
+    "start": "node scripts/ensure-built.cjs && electron .",
+    "start:standalone": "node scripts/ensure-built.cjs && electron . -- --standalone",
+    "desktop": "node scripts/ensure-built.cjs && electron . -- --play",
     "check": "node scripts/check.cjs",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{cjs,js,json}\"",
+    "format:check": "prettier --check \"**/*.{cjs,js,json}\"",
+    "test:print": "node scripts/test-print-layout.cjs",
+    "test:electron": "node scripts/ensure-built.cjs && node scripts/e2e-electron.cjs",
+    "icons": "node scripts/build-icons.cjs",
+    "native:electron": "node scripts/build-native-electron.cjs",
     "license": "node tools/license.cjs",
-    "pack": "electron-builder --dir",
-    "pack:portable": "node scripts/portable.cjs",
-    "pack:lab-desktop": "node scripts/package-lab-desktop.cjs",
-    "build:desktop": "powershell -ExecutionPolicy Bypass -File scripts/build-setup-to-desktop.ps1",
-    "build:integrated": "powershell -ExecutionPolicy Bypass -File scripts/build-integrated-desktop.ps1",
-    "play": "powershell -ExecutionPolicy Bypass -File scripts/play.ps1",
-    "desktop": "electron . -- --play",
-    "pack:server": "node scripts/server-bundle.cjs",
-    "dist": "electron-builder --win nsis",
+    "pack": "node scripts/ensure-built.cjs && electron-builder --dir && node scripts/verify-icon.cjs",
+    "dist": "node scripts/ensure-built.cjs && electron-builder --win nsis && node scripts/verify-icon.cjs",
     "lab:setup": "node scripts/lab-setup.cjs",
-    "lab:seed-device": "electron scripts/lab-seed-electron.cjs",
-    "lab:pack": "npm.cmd run pack:portable",
-    "lab:server": "node --env-file=.env scripts/lab-server.cjs",
-    "lab:start": "electron . -- --lab",
-    "demo": "powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1"
+    "play": "powershell -ExecutionPolicy Bypass -File scripts/play.ps1",
+    "backend:generate": "prisma generate --config backend/prisma.config.ts",
+    "backend:typecheck": "tsc -p backend/tsconfig.json --noEmit",
+    "backend:test": "tsx --tsconfig backend/tsconfig.json --test --test-force-exit --test-concurrency=1 backend/tests/*.test.ts",
+    "backend:build": "npm run backend:generate && node backend/scripts/build.mjs",
+    "backend:dev": "tsx watch --tsconfig backend/tsconfig.json --env-file=.env backend/src/server.ts",
+    "backend:schema-check": "tsx --tsconfig backend/tsconfig.json backend/scripts/verify-schema.ts",
+    "backend:migrate-pglite": "tsx --tsconfig backend/tsconfig.json backend/scripts/migrate-pglite-to-sqlite.ts",
+    "test": "node --test --test-isolation=none tests/*.test.cjs",
+    "test:ui": "npm --prefix renderer-app test",
+    "ui:build": "npm --prefix renderer-app run build",
+    "test:all": "npm run check && npm run lint && npm run backend:typecheck && npm test && npm run backend:test && npm run test:ui && npm run test:print",
+    "server": "node --env-file=.env backend/dist/server.cjs",
+    "server:activation": "node --env-file=.env tools/request-activation.cjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
-    "pg": "^8.16.3",
-    "qrcode": "^1.5.4"
+    "@prisma/adapter-better-sqlite3": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "better-sqlite3": "^12.11.1",
+    "exceljs": "^4.4.0",
+    "express": "^5.3.0",
+    "qrcode": "^1.5.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "@types/pngjs": "^6.0.5",
+    "@types/qrcode": "^1.5.6",
     "electron": "^41.0.0",
     "electron-builder": "^26.0.12",
-    "jsdom": "^30.1.2",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
     "jsqr": "^1.4.0",
-    "pg-mem": "^3.0.5"
+    "png-to-ico": "^3.0.2",
+    "pngjs": "^7.0.0",
+    "prettier": "^3.9.10",
+    "prisma": "^7.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.0"
   },
   "build": {
     "appId": "local.militaryaffairs.desktop",
@@ -51,31 +72,53 @@
     "artifactName": "Military-Affairs-Setup-${version}.${ext}",
     "asar": true,
     "asarUnpack": [
+      "**/node_modules/better-sqlite3/**",
       "**/node_modules/@electric-sql/pglite/**"
     ],
     "files": [
       "desktop/**/*",
-      "server/**/*",
-      "scripts/lab-sample-data.cjs",
-      "renderer/**/*",
-      "css/**/*",
-      "fonts/**/*",
       "shared/**/*",
+      "renderer-app/dist/**/*",
+      "fonts/**/*",
+      "backend/dist/**/*",
+      "backend/prisma/migrations/**/*",
+      "assets/logo-128.png",
+      "build/icon.png",
       "package.json"
     ],
     "directories": {
       "output": "artifacts"
     },
     "extraResources": [
-      { "from": "private/ca-cert.pem", "to": "lab-demo/ca-cert.pem" },
-      { "from": "private/ca-cert.pem", "to": "private/ca-cert.pem" },
-      { "from": "private/server-cert.pem", "to": "private/server-cert.pem" },
-      { "from": "private/server-key.pem", "to": "private/server-key.pem" }
+      {
+        "from": "native/electron/better_sqlite3.node",
+        "to": "native/better_sqlite3.node"
+      },
+      {
+        "from": "private/ca-cert.pem",
+        "to": "lab-demo/ca-cert.pem"
+      },
+      {
+        "from": "private/ca-cert.pem",
+        "to": "private/ca-cert.pem"
+      },
+      {
+        "from": "private/server-cert.pem",
+        "to": "private/server-cert.pem"
+      },
+      {
+        "from": "private/server-key.pem",
+        "to": "private/server-key.pem"
+      }
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }

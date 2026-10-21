@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID, randomBytes } = require('node:crypto');
-const { keyPair, fingerprint, hashPassword } = require('../shared/crypto.cjs');
+const { keyPair, fingerprint } = require('../shared/crypto.cjs');
 
 function standaloneRoot(userDataDir) {
   return path.join(userDataDir, 'standalone');
@@ -48,8 +48,20 @@ function ensureStandalone(userDataDir, opts = {}) {
     const internal = { id: randomUUID(), kind: 'internal', ...keyPair() };
     const gate = { id: randomUUID(), kind: 'gate', ...keyPair() };
     devices = {
-      internal: { id: internal.id, kind: 'internal', publicKey: internal.publicKey, privateKey: internal.privateKey, fingerprint: fingerprint(internal.publicKey) },
-      gate: { id: gate.id, kind: 'gate', publicKey: gate.publicKey, privateKey: gate.privateKey, fingerprint: fingerprint(gate.publicKey) },
+      internal: {
+        id: internal.id,
+        kind: 'internal',
+        publicKey: internal.publicKey,
+        privateKey: internal.privateKey,
+        fingerprint: fingerprint(internal.publicKey),
+      },
+      gate: {
+        id: gate.id,
+        kind: 'gate',
+        publicKey: gate.publicKey,
+        privateKey: gate.privateKey,
+        fingerprint: fingerprint(gate.publicKey),
+      },
     };
     fs.writeFileSync(devicesPath, JSON.stringify(devices, null, 2));
   }
@@ -79,16 +91,10 @@ function ensureStandalone(userDataDir, opts = {}) {
     ca,
     certPath: path.join(tlsDir, 'server-cert.pem'),
     keyPath: path.join(tlsDir, 'server-key.pem'),
-    dbDir: path.join(root, 'database'),
+    dbFile: path.join(root, 'app.db'),
+    legacyDbDir: path.join(root, 'database'), // PGlite data of versions before SQLite
     loginPath,
   };
-}
-
-async function ensureAdminUser(pool, meta) {
-  const existing = await pool.query("SELECT id FROM users WHERE role='admin' AND disabled=false LIMIT 1");
-  if (existing.rows.length) return;
-  await pool.query('INSERT INTO users(id,username,name,password_hash,role) VALUES($1,$2,$3,$4,$5)',
-    [randomUUID(), meta.adminUsername, meta.adminName, await hashPassword(meta.adminPassword), 'admin']);
 }
 
 function ensureBackupKey(root) {
@@ -99,4 +105,4 @@ function ensureBackupKey(root) {
   return key;
 }
 
-module.exports = { ensureStandalone, ensureAdminUser, standaloneRoot, ensureBackupKey };
+module.exports = { ensureStandalone, standaloneRoot, ensureBackupKey };

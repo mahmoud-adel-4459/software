@@ -21,9 +21,7 @@ test('QR payload includes military number and gate fields', async () => {
   const data = await QRCode.toBuffer(payload, { errorCorrectionLevel: 'L', margin: 2, width: 420 });
   const png = PNG.sync.read(data);
   const decoded = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
-  const parsed = JSON.parse(decoded.data);
-  assert.equal(parsed.mn, '000012345');
-  assert.equal(parsed.name, 'أحمد');
+  assert.equal(decoded.data, '000012345');
   assert.equal(parseQrScan(decoded.data), '000012345');
   assert.equal(gateProfileRows(soldier).length, 18);
 });

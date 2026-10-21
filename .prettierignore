@@ -1,0 +1,15 @@
+node_modules
+artifacts
+private
+js
+css
+package-lock.json
+fonts
+renderer/*.css
+
+legacy-archive
+legacy-export
+renderer-app/dist
+backend/dist
+backend/src/generated
+native

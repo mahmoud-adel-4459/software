@@ -1,0 +1,298 @@
+// SQLite schema. Field names intentionally stay snake_case: they are the frozen JSON contract of the API.
+// Partial unique indexes and CHECK constraints live in migration.sql (Prisma cannot express them);
+// `one_active_permit` / `visitor_open_visit` are declared here only so `prisma migrate diff` stays clean.
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String  @id
+  username      String  @unique
+  name          String
+  password_hash String
+  role          String
+  disabled      Boolean @default(false)
+  auth_version  Int     @default(1)
+
+  permits              Permit[]
+  gate_events          GateEvent[]
+  gate_corrections     GateCorrection[]
+  audit_log            AuditLog[]
+  requests             RequestRecord[]
+  canteen_transactions CanteenTransaction[]
+  fitness_records      FitnessRecord[]
+  legacy_imports       LegacyImport[]
+  visitor_visits       VisitorVisit[]
+
+  @@map("users")
+}
+
+model Soldier {
+  id          String   @id
+  military_no String   @unique
+  national_id String
+  name        String
+  rank        String
+  company     String
+  unit        String
+  phone       String   @default("")
+  address     String   @default("")
+  status      String   @default("in")
+  version     Int      @default(1)
+  created_at  DateTime @default(now())
+  archived    Boolean  @default(false)
+  details     Json
+
+  permits              Permit[]
+  gate_events          GateEvent[]
+  attachments          Attachment[]
+  canteen_transactions CanteenTransaction[]
+  fitness_records      FitnessRecord[]
+
+  @@map("soldiers")
+}
+
+model Permit {
+  id              String    @id
+  no              Int       @unique
+  soldier_id      String
+  reason          String
+  exit_at         DateTime
+  expected_return DateTime
+  returned_at     DateTime?
+  notes           String    @default("")
+  entry_notes     String    @default("")
+  created_by      String
+  voided          Boolean   @default(false)
+
+  soldier     Soldier     @relation(fields: [soldier_id], references: [id])
+  creator     User        @relation(fields: [created_by], references: [id])
+  gate_events GateEvent[]
+
+  // Real index is PARTIAL: WHERE returned_at IS NULL AND voided = 0 (see migration.sql).
+  @@unique([soldier_id], map: "one_active_permit")
+  @@index([exit_at], map: "permits_exit_at")
+  @@map("permits")
+}
+
+model GateEvent {
+  id         String   @id
+  permit_id  String
+  soldier_id String
+  kind       String
+  at         DateTime @default(now())
+  user_id    String
+  device_id  String
+  request_id String   @unique
+  sequence   Int
+
+  permit     Permit          @relation(fields: [permit_id], references: [id])
+  soldier    Soldier         @relation(fields: [soldier_id], references: [id])
+  user       User            @relation(fields: [user_id], references: [id])
+  correction GateCorrection?
+
+  @@map("gate_events")
+}
+
+model GateCorrection {
+  id           String   @id
+  event_id     String   @unique
+  reason       String
+  before_state Json
+  after_state  Json
+  at           DateTime @default(now())
+  created_by   String
+
+  event   GateEvent @relation(fields: [event_id], references: [id])
+  creator User      @relation(fields: [created_by], references: [id])
+
+  @@map("gate_corrections")
+}
+
+model AuditLog {
+  id        String   @id
+  user_id   String
+  device_id String
+  action    String
+  entity_id String
+  at        DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("audit_log")
+}
+
+model RequestRecord {
+  id         String   @id
+  user_id    String
+  device_id  String
+  body_hash  String
+  response   Json
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("requests")
+}
+
+model Attachment {
+  id         String   @id
+  soldier_id String
+  kind       String
+  name       String
+  mime       String
+  content    String
+  sha256     String
+  size       Int
+  created_at DateTime @default(now())
+
+  soldier Soldier @relation(fields: [soldier_id], references: [id])
+
+  @@index([soldier_id], map: "attachments_soldier")
+  @@map("attachments")
+}
+
+model FoodOutlet {
+  id         String   @id
+  kind       String
+  name       String
+  disabled   Boolean  @default(false)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+
+  canteen_transactions CanteenTransaction[]
+
+  @@map("food_outlets")
+}
+
+model CanteenTransaction {
+  id           String   @id
+  soldier_id   String
+  outlet_id    String
+  amount_cents Int
+  reversal_of  String?  @unique
+  notes        String   @default("")
+  at           DateTime @default(now())
+  created_by   String
+
+  soldier  Soldier             @relation(fields: [soldier_id], references: [id])
+  outlet   FoodOutlet          @relation(fields: [outlet_id], references: [id])
+  creator  User                @relation(fields: [created_by], references: [id])
+  original CanteenTransaction? @relation("Reversal", fields: [reversal_of], references: [id])
+  reversal CanteenTransaction? @relation("Reversal")
+
+  @@index([soldier_id, at], map: "canteen_soldier_at")
+  @@map("canteen_transactions")
+}
+
+model FitnessRecord {
+  id         String   @id
+  soldier_id String
+  type       String
+  value      Float?
+  unit       String
+  date       DateTime
+  notes      String   @default("")
+  created_by String
+  raw_result String   @default("")
+
+  soldier Soldier @relation(fields: [soldier_id], references: [id])
+  creator User    @relation(fields: [created_by], references: [id])
+
+  @@index([soldier_id, date], map: "fitness_soldier_date")
+  @@map("fitness_records")
+}
+
+model Settings {
+  id      Int  @id
+  version Int  @default(1)
+  data    Json
+
+  @@map("settings")
+}
+
+model LegacyImport {
+  id         String   @id
+  sha256     String   @unique
+  at         DateTime @default(now())
+  created_by String
+
+  creator User @relation(fields: [created_by], references: [id])
+
+  @@map("legacy_imports")
+}
+
+model VisitorCategory {
+  id         String  @id
+  name       String
+  tier       String  @default("normal")
+  sort_order Int     @default(0)
+  disabled   Boolean @default(false)
+
+  visitors Visitor[]
+
+  @@map("visitor_categories")
+}
+
+model Visitor {
+  id           String   @id
+  name         String
+  category_id  String
+  badge_no     String   @unique
+  phone        String   @default("")
+  national_id  String   @default("")
+  organization String   @default("")
+  notes        String   @default("")
+  disabled     Boolean  @default(false)
+  created_at   DateTime @default(now())
+
+  category VisitorCategory @relation(fields: [category_id], references: [id])
+  visits   VisitorVisit[]
+
+  @@map("visitors")
+}
+
+model VisitorVisit {
+  id          String    @id
+  visitor_id  String
+  purpose     String
+  check_in    DateTime  @default(now())
+  check_out   DateTime?
+  entry_notes String    @default("")
+  created_by  String?
+  device_id   String    @default("")
+  request_id  String?
+  voided      Boolean   @default(false)
+
+  visitor Visitor @relation(fields: [visitor_id], references: [id])
+  creator User?   @relation(fields: [created_by], references: [id])
+
+  // Real index is PARTIAL: WHERE check_out IS NULL AND voided = 0 (see migration.sql).
+  @@unique([visitor_id], map: "visitor_open_visit")
+  @@index([check_in], map: "visitor_visits_check_in")
+  @@map("visitor_visits")
+}
+
+/// Named monotonic counters (permits.no, gate_events.sequence), bumped inside the writing transaction.
+model Counter {
+  name  String @id
+  value Int
+
+  @@map("counters")
+}
+
+/// Applied SQL migrations (checksummed), maintained by src/config/migrator.ts.
+model AppMigration {
+  name       String   @id
+  checksum   String
+  applied_at DateTime @default(now())
+
+  @@map("_migrations")
+}

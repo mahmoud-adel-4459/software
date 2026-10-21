@@ -1,0 +1,17 @@
+/* Only neutral rgba values / CSS variables here; real brand colors live in theme/tokens.ts. */
+@keyframes liveDotPulse {
+  0% { box-shadow: 0 0 0 0 rgba(47, 125, 79, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(47, 125, 79, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(47, 125, 79, 0); }
+}
+@keyframes spinSweep { to { transform: rotate(360deg); } }
+.live-pulse-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; animation: liveDotPulse 1.8s infinite; }
+.spin-sweep { animation: spinSweep 0.9s linear infinite; }
+.kpi-card-hover { transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s; }
+.kpi-card-hover:hover { transform: translateY(-2px); }
+.num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; display: inline-block; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(88, 107, 101, 0.35); border-radius: 6px; }
+html, body, #root { height: 100%; }
+@media print { .print-hide { display: none !important; } }
+

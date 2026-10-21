@@ -4,7 +4,7 @@ const path = require('node:path');
 const { execFileSync, spawnSync } = require('node:child_process');
 const { randomUUID, randomBytes } = require('node:crypto');
 const { keyPair, fingerprint } = require('../shared/crypto.cjs');
-const { serverFingerprint } = require('../server/identity.cjs');
+const { serverFingerprint } = require('../shared/identity.cjs');
 
 const root = path.resolve(__dirname, '..');
 const privateDir = path.join(root, 'private');
@@ -24,11 +24,42 @@ function ensureTls() {
   }
   console.log('TLS: generating local CA and server certificate…');
   runOpenSSL(['genrsa', '-out', 'ca-key.pem', '4096']);
-  runOpenSSL(['req', '-x509', '-new', '-nodes', '-key', 'ca-key.pem', '-sha256', '-days', '3650', '-subj', '/CN=Military Affairs Local CA', '-out', 'ca-cert.pem']);
+  runOpenSSL([
+    'req',
+    '-x509',
+    '-new',
+    '-nodes',
+    '-key',
+    'ca-key.pem',
+    '-sha256',
+    '-days',
+    '3650',
+    '-subj',
+    '/CN=Military Affairs Local CA',
+    '-out',
+    'ca-cert.pem',
+  ]);
   runOpenSSL(['genrsa', '-out', 'server-key.pem', '2048']);
   runOpenSSL(['req', '-new', '-key', 'server-key.pem', '-subj', '/CN=localhost', '-out', 'server.csr']);
   fs.writeFileSync(path.join(privateDir, 'san.ext'), 'subjectAltName=DNS:localhost,IP:127.0.0.1\r\n', 'utf8');
-  runOpenSSL(['x509', '-req', '-in', 'server.csr', '-CA', 'ca-cert.pem', '-CAkey', 'ca-key.pem', '-CAcreateserial', '-out', 'server-cert.pem', '-days', '825', '-sha256', '-extfile', 'san.ext']);
+  runOpenSSL([
+    'x509',
+    '-req',
+    '-in',
+    'server.csr',
+    '-CA',
+    'ca-cert.pem',
+    '-CAkey',
+    'ca-key.pem',
+    '-CAcreateserial',
+    '-out',
+    'server-cert.pem',
+    '-days',
+    '825',
+    '-sha256',
+    '-extfile',
+    'san.ext',
+  ]);
   console.log('TLS: done.');
 }
 
@@ -36,7 +67,10 @@ function ensureIssuer() {
   const pub = path.join(privateDir, 'issuer-public.pem');
   if (fs.existsSync(pub)) return;
   console.log('License: creating issuer key pair…');
-  execFileSync(process.execPath, [path.join(root, 'tools', 'license.cjs'), 'keygen', privateDir], { stdio: 'inherit', cwd: root });
+  execFileSync(process.execPath, [path.join(root, 'tools', 'license.cjs'), 'keygen', privateDir], {
+    stdio: 'inherit',
+    cwd: root,
+  });
 }
 
 function ensureDevices() {
@@ -45,12 +79,38 @@ function ensureDevices() {
   const internal = { id: randomUUID(), kind: 'internal', ...keyPair() };
   const gate = { id: randomUUID(), kind: 'gate', ...keyPair() };
   const value = {
-    internal: { id: internal.id, kind: 'internal', publicKey: internal.publicKey, privateKey: internal.privateKey, fingerprint: fingerprint(internal.publicKey) },
-    gate: { id: gate.id, kind: 'gate', publicKey: gate.publicKey, privateKey: gate.privateKey, fingerprint: fingerprint(gate.publicKey) },
+    internal: {
+      id: internal.id,
+      kind: 'internal',
+      publicKey: internal.publicKey,
+      privateKey: internal.privateKey,
+      fingerprint: fingerprint(internal.publicKey),
+    },
+    gate: {
+      id: gate.id,
+      kind: 'gate',
+      publicKey: gate.publicKey,
+      privateKey: gate.privateKey,
+      fingerprint: fingerprint(gate.publicKey),
+    },
   };
   fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf8');
-  fs.writeFileSync(path.join(privateDir, 'device-internal-request.json'), JSON.stringify({ id: value.internal.id, publicKey: value.internal.publicKey, fingerprint: value.internal.fingerprint }, null, 2));
-  fs.writeFileSync(path.join(privateDir, 'device-gate-request.json'), JSON.stringify({ id: value.gate.id, publicKey: value.gate.publicKey, fingerprint: value.gate.fingerprint }, null, 2));
+  fs.writeFileSync(
+    path.join(privateDir, 'device-internal-request.json'),
+    JSON.stringify(
+      { id: value.internal.id, publicKey: value.internal.publicKey, fingerprint: value.internal.fingerprint },
+      null,
+      2,
+    ),
+  );
+  fs.writeFileSync(
+    path.join(privateDir, 'device-gate-request.json'),
+    JSON.stringify(
+      { id: value.gate.id, publicKey: value.gate.publicKey, fingerprint: value.gate.fingerprint },
+      null,
+      2,
+    ),
+  );
   console.log('Devices: lab internal + gate keys saved to private/lab-devices.json');
   return value;
 }
@@ -76,7 +136,11 @@ BACKUP_RETENTION_DAYS=30
 `;
   fs.writeFileSync(envPath, body, 'utf8');
   fs.mkdirSync(path.join(root, 'artifacts', 'lab-backups'), { recursive: true });
-  fs.writeFileSync(path.join(privateDir, 'lab-login.txt'), `Lab login (after server:init + server running)\r\nURL: https://127.0.0.1:8443\r\nUsername: admin\r\nPassword: ${adminPassword}\r\n`, 'utf8');
+  fs.writeFileSync(
+    path.join(privateDir, 'lab-login.txt'),
+    `Lab login (after server:init + server running)\r\nURL: https://127.0.0.1:8443\r\nUsername: admin\r\nPassword: ${adminPassword}\r\n`,
+    'utf8',
+  );
   console.log('Env: .env and private/lab-login.txt written.');
   return envPath;
 }
@@ -93,10 +157,23 @@ function ensureLicense(serverId, devices) {
       { id: devices.gate.id, kind: 'gate', publicKey: devices.gate.publicKey },
     ],
   };
-  fs.writeFileSync(path.join(privateDir, 'server-request.json'), JSON.stringify({ serverId, serverFingerprint: fp }, null, 2));
+  fs.writeFileSync(
+    path.join(privateDir, 'server-request.json'),
+    JSON.stringify({ serverId, serverFingerprint: fp }, null, 2),
+  );
   fs.writeFileSync(path.join(privateDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
   if (fs.existsSync(licensePath)) fs.unlinkSync(licensePath);
-  execFileSync(process.execPath, [path.join(root, 'tools', 'license.cjs'), 'issue', path.join(privateDir, 'issuer-private.pem'), path.join(privateDir, 'manifest.json'), licensePath], { stdio: 'inherit', cwd: root });
+  execFileSync(
+    process.execPath,
+    [
+      path.join(root, 'tools', 'license.cjs'),
+      'issue',
+      path.join(privateDir, 'issuer-private.pem'),
+      path.join(privateDir, 'manifest.json'),
+      licensePath,
+    ],
+    { stdio: 'inherit', cwd: root },
+  );
   console.log('License: private/license.json signed.');
 }
 
@@ -111,7 +188,8 @@ async function main() {
     const ap = text.match(/^ADMIN_PASSWORD=(.+)$/m);
     if (ap && ap[1].length >= 12) existingAdminPassword = ap[1].trim();
   }
-  const adminPassword = process.env.LAB_ADMIN_PASSWORD || existingAdminPassword || `Lab-${randomBytes(9).toString('base64url')}!`;
+  const adminPassword =
+    process.env.LAB_ADMIN_PASSWORD || existingAdminPassword || `Lab-${randomBytes(9).toString('base64url')}!`;
   const serverId = process.env.LAB_SERVER_ID || existingServerId || randomUUID();
   const dbUrl = process.env.LAB_DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:5432/military_affairs';
   ensureTls();
@@ -121,15 +199,24 @@ async function main() {
   ensureLicense(serverId, devices);
   const profile = path.join(root, 'artifacts', 'lab-electron-profile');
   fs.mkdirSync(profile, { recursive: true });
-  fs.writeFileSync(path.join(profile, 'connection.json'), JSON.stringify({
-    serverUrl: 'https://127.0.0.1:8443',
-    ca: fs.readFileSync(path.join(privateDir, 'ca-cert.pem'), 'utf8'),
-  }, null, 2));
-  console.log('\nLab setup complete. Next:\n  npm.cmd run lab:server   (keep open)\n  npm.cmd run lab:start    (Electron — lab profile)\n');
+  fs.writeFileSync(
+    path.join(profile, 'connection.json'),
+    JSON.stringify(
+      {
+        serverUrl: 'https://127.0.0.1:8443',
+        ca: fs.readFileSync(path.join(privateDir, 'ca-cert.pem'), 'utf8'),
+      },
+      null,
+      2,
+    ),
+  );
+  console.log(
+    '\nLab setup complete. Next:\n  npm.cmd run lab:server   (keep open)\n  npm.cmd run lab:start    (Electron — lab profile)\n',
+  );
   console.log('Login: see private/lab-login.txt');
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('\nLab setup failed:', error.message);
   console.error('If PostgreSQL is missing, install it then set LAB_DATABASE_URL and re-run: npm.cmd run lab:setup');
   process.exit(1);

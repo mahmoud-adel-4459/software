@@ -1,13 +1,13 @@
 'use strict';
 
-/** مصدر واحد لتعريف التقارير — يُستخدم في الخادم، التصدير، والكتalog. */
+/** مصدر واحد لتعريف التقارير — يُستخدم في الخادم، التصدير، والكتالوج. */
 const REPORT_IDS = ['soldiers', 'gate', 'visitor', 'canteen', 'buffet', 'fitness'];
 
 const REPORT_META = {
   soldiers: {
     title: 'قائمة العسكريين',
     short: 'العسكريون',
-    hint: 'بحث بالاسم أو الرقم العسكي والسرية. لا يُستخدم نطاق التاريخ — يعرض كل الأفراد المطابقين.',
+    hint: 'بحث بالاسم أو الرقم العسكري والسرية. لا يُستخدم نطاق التاريخ — يعرض كل الأفراد المطابقين.',
     filters: { fromTo: false, company: true, q: true, outlet: false },
     clerk: false,
   },
@@ -98,7 +98,19 @@ const UI_COLUMNS = {
 
 const EXPORT_FIELDS = {
   soldiers: ['name', 'military_no', 'national_id', 'rank', 'company', 'unit', 'status', 'archived'],
-  gate: ['name', 'military_no', 'company', 'kind', 'at', 'no', 'reason', 'expected_return', 'returned_at', 'voided', 'correction_reason'],
+  gate: [
+    'name',
+    'military_no',
+    'company',
+    'kind',
+    'at',
+    'no',
+    'reason',
+    'expected_return',
+    'returned_at',
+    'voided',
+    'correction_reason',
+  ],
   canteen: ['outlet_name', 'name', 'military_no', 'company', 'at', 'amount_cents', 'notes', 'reversal_of'],
   buffet: ['outlet_name', 'name', 'military_no', 'company', 'at', 'amount_cents', 'notes', 'reversal_of'],
   fitness: ['name', 'military_no', 'company', 'date', 'type', 'value', 'raw_result', 'unit', 'notes'],
@@ -122,12 +134,12 @@ const EXPORT_TITLES = {
 };
 
 function reportTypesForRole(role) {
-  return REPORT_IDS.filter(id => role === 'clerk' ? REPORT_META[id].clerk : true);
+  return REPORT_IDS.filter((id) => (role === 'clerk' ? REPORT_META[id].clerk : true));
 }
 
 function catalogForClient(role) {
   const allowed = new Set(reportTypesForRole(role));
-  return REPORT_IDS.filter(id => allowed.has(id)).map(id => ({
+  return REPORT_IDS.filter((id) => allowed.has(id)).map((id) => ({
     id,
     title: REPORT_META[id].title,
     short: REPORT_META[id].short,

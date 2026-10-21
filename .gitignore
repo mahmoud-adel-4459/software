@@ -14,3 +14,11 @@ lab-user-data/
 license.json
 device-request.json
 server-request.json
+native/
+backend/dist/
+backend/src/generated/
+renderer-app/dist/
+renderer-app/node_modules/
+*.db
+*.db-wal
+*.db-shm

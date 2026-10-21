@@ -9,8 +9,11 @@ function readWindowsMachineGuid() {
   if (process.platform !== 'win32') return '';
   try {
     const reg = path.join(process.env.SystemRoot || 'C:/Windows', 'System32', 'reg.exe');
-    const output = execFileSync(reg, ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'],
-      { encoding: 'utf8', windowsHide: true, timeout: 5000 });
+    const output = execFileSync(reg, ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 5000,
+    });
     const match = /MachineGuid\s+REG_SZ\s+([0-9a-f-]{36})/i.exec(output);
     return match ? match[1].toLowerCase() : '';
   } catch {

@@ -5,14 +5,14 @@ const { catalogForClient, summarizeReport, REPORT_IDS } = require('../shared/rep
 
 test('report catalog lists six types for admin and two for clerk', () => {
   assert.equal(catalogForClient('admin').length, REPORT_IDS.length);
-  assert.deepEqual(catalogForClient('clerk').map(r => r.id), ['canteen', 'buffet']);
+  assert.deepEqual(
+    catalogForClient('clerk').map((r) => r.id),
+    ['canteen', 'buffet'],
+  );
 });
 
 test('report summary aggregates gate and canteen rows', () => {
-  const gate = summarizeReport('gate', [
-    { kind: 'exit' },
-    { kind: 'entry', correction_reason: 'خطأ' },
-  ]);
+  const gate = summarizeReport('gate', [{ kind: 'exit' }, { kind: 'entry', correction_reason: 'خطأ' }]);
   assert.equal(gate.entries, 1);
   assert.equal(gate.exits, 1);
   assert.equal(gate.corrected, 1);

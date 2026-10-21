@@ -8,11 +8,16 @@ function walk(dir) {
     const target = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(target);
     else if (/\.(cjs|js)$/.test(entry.name)) {
-      try { new vm.Script(fs.readFileSync(target, 'utf8'), { filename: target }); }
-      catch (error) { failures++; console.error(error.message); }
+      try {
+        new vm.Script(fs.readFileSync(target, 'utf8'), { filename: target });
+      } catch (error) {
+        failures++;
+        console.error(error.message);
+      }
     }
   }
 }
-for (const dir of ['desktop', 'server', 'renderer', 'shared', 'tools', 'scripts', 'tests']) if (fs.existsSync(dir)) walk(dir);
+for (const dir of ['desktop', 'server', 'renderer', 'shared', 'tools', 'scripts', 'tests'])
+  if (fs.existsSync(dir)) walk(dir);
 console.log(failures ? `${failures} syntax failures` : 'All JavaScript syntax checks passed');
 process.exitCode = failures ? 1 : 0;

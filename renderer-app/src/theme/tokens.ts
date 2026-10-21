@@ -1,0 +1,90 @@
+/** Single source of every color/shadow. Pages must use these tokens, never raw hex. */
+const shadowBase = '24, 58, 54'; // green-dark rgb used to tint all shadows
+
+export const tokens = {
+  // Brand (role of "navy" in the reference = deep green)
+  navy: '#244b46',
+  navy900: '#102824',
+  navy700: '#183a36',
+  navy600: '#315f51',
+  navy400: '#586b65',
+  navy300: '#6d7d76',
+  navy200: '#9aa8a2',
+  navy100: '#cddbd5',
+  primary: '#244b46',
+  primaryHover: '#183a36',
+  primaryLight: '#edf5f2',
+  secondary: '#315f51',
+  ice: '#d9ebe5',
+  ice100: '#eef2f0',
+  bg: '#f3f5f5',
+  surface: '#ffffff',
+  surfaceSubtle: '#f7f9f8',
+  surfaceMuted: '#eef2f0',
+  text: '#1c302c',
+  textSecondary: '#586b65',
+  textTertiary: '#6d7d76',
+  border: '#dde5e2',
+  borderSubtle: '#e8eeeb',
+  borderStrong: '#cddbd5',
+  sidebarFrom: '#244b46',
+  sidebarTo: '#0a1628',
+  // Emblem palette (official logo): gold accents, deep navy, silver, military red
+  gold: '#c9a227',
+  goldLight: '#e8c547',
+  goldDark: '#8f6e10',
+  goldSoft: '#faf3da',
+  navyDeep: '#0a1628',
+  navyMid: '#112040',
+  silver: '#c0c0c0',
+  militaryRed: '#8b1a1a',
+  militaryRedSoft: '#f6e4e4',
+  onDark: '#ffffff',
+  scrim: 'rgba(16, 40, 36, 0.45)',
+  // Semantic: main (dots/borders/charts) / Soft (bg) / Ink (text)
+  green: '#2f7d4f',
+  greenSoft: '#e8f4ec',
+  greenInk: '#1f5d3a',
+  amber: '#c58a14',
+  amberSoft: '#fff4dc',
+  amberInk: '#93650a',
+  red: '#b42318',
+  redSoft: '#fdecea',
+  redInk: '#8f1c12',
+  blue: '#2b6e9a',
+  blueSoft: '#e6f1f8',
+  blueInk: '#1d4f72',
+  purple: '#6a4c93',
+  purpleSoft: '#f1ecf7',
+  radius: 8,
+  shadow: {
+    sm: `0 1px 2px rgba(${shadowBase}, 0.06)`,
+    card: `0 1px 2px rgba(${shadowBase}, 0.05), 0 4px 14px -6px rgba(${shadowBase}, 0.1)`,
+    cardHover: `0 2px 4px rgba(${shadowBase}, 0.07), 0 10px 24px -8px rgba(${shadowBase}, 0.18)`,
+    dropdown: `0 18px 40px -18px rgba(${shadowBase}, 0.35), 0 0 0 1px rgba(${shadowBase}, 0.06)`,
+    modal: `0 24px 48px -12px rgba(${shadowBase}, 0.3)`,
+    activeNav: '0 6px 16px -6px rgba(0, 0, 0, 0.45)',
+    focusRing: '0 0 0 3px rgba(36, 75, 70, 0.18)',
+    goldFocus: '0 0 0 3px rgba(201, 162, 39, 0.35)',
+    goldGlow: '0 0 40px rgba(201, 162, 39, 0.35)',
+  },
+  headerBlur: 'rgba(243, 245, 245, 0.82)',
+  glassOnDark: 'rgba(255, 255, 255, 0.08)',
+  textOnDarkMuted: 'rgba(255, 255, 255, 0.72)',
+  textOnDarkFaint: 'rgba(255, 255, 255, 0.5)',
+} as const;
+
+export type Tone = 'primary' | 'green' | 'amber' | 'red' | 'blue' | 'purple' | 'neutral';
+
+/** Soft/Ink/main triple per tone for chips, icons and KPI squares. */
+export const toneColors: Record<Tone, { main: string; soft: string; ink: string }> = {
+  primary: { main: tokens.primary, soft: tokens.primaryLight, ink: tokens.primary },
+  green: { main: tokens.green, soft: tokens.greenSoft, ink: tokens.greenInk },
+  amber: { main: tokens.amber, soft: tokens.amberSoft, ink: tokens.amberInk },
+  red: { main: tokens.red, soft: tokens.redSoft, ink: tokens.redInk },
+  blue: { main: tokens.blue, soft: tokens.blueSoft, ink: tokens.blueInk },
+  purple: { main: tokens.purple, soft: tokens.purpleSoft, ink: tokens.purple },
+  neutral: { main: tokens.navy300, soft: tokens.surfaceMuted, ink: tokens.textSecondary },
+};
+
+export const FONT_FAMILY = '"IBM Plex Sans Arabic", system-ui, "Segoe UI", Tahoma, sans-serif';
