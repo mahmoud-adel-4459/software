@@ -1,0 +1,9 @@
+{"sessionId":"0f6997","location":"modules.cjs:reports/daily","message":"route hit","data":{"role":"admin","date":"2026-10-14"},"timestamp":1791989818567,"hypothesisId":"H1"}
+{"sessionId":"0f6997","location":"daily-report.cjs","message":"buildDailyReport start","data":{"date":"2026-10-14"},"timestamp":1791989818579,"hypothesisId":"H3"}
+{"sessionId":"0f6997","location":"daily-report.cjs","message":"buildDailyReport ok","data":{"soldiers":1,"gateEvents":1,"canteenTx":3},"timestamp":1791989818636,"hypothesisId":"H3"}
+{"sessionId":"0f6997","location":"modules.js:loadModule","message":"daily load start","data":{"date":"2026-10-14","isAdmin":true,"hasSession":true},"timestamp":1791989824350,"hypothesisId":"H2"}
+{"sessionId":"0f6997","location":"modules.cjs:reports/daily","message":"route hit","data":{"role":"admin","date":"2026-10-14"},"timestamp":1791989824366,"hypothesisId":"H1"}
+{"sessionId":"0f6997","location":"daily-report.cjs","message":"buildDailyReport start","data":{"date":"2026-10-14"},"timestamp":1791989824369,"hypothesisId":"H3"}
+{"sessionId":"0f6997","location":"daily-report.cjs","message":"buildDailyReport ok","data":{"soldiers":0,"gateEvents":0,"canteenTx":0},"timestamp":1791989824534,"hypothesisId":"H3"}
+{"sessionId":"0f6997","location":"modules.js:loadModule","message":"daily load ok","data":{"gate":0},"timestamp":1791989824540,"hypothesisId":"H1"}
+{"sessionId":"0f6997","location":"modules.js:dailyReportPage","message":"render daily page","data":{"hasReport":true,"hasDailyReportJs":true},"timestamp":1791989824543,"hypothesisId":"H4"}

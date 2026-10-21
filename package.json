@@ -1,0 +1,83 @@
+{
+  "name": "military-affairs-desktop",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Arabic military affairs LAN desktop client and server",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "start:standalone": "electron . -- --standalone",
+    "preview:local": "node scripts/local-preview.cjs",
+    "server": "node --env-file=.env server/start.cjs",
+    "server:init": "node --env-file=.env server/setup.cjs",
+    "server:activation": "node --env-file=.env server/request-activation.cjs",
+    "test": "node --test --test-isolation=none tests/*.test.cjs",
+    "test:all": "npm run check && npm test",
+    "test:app": "node --test --test-isolation=none tests/e2e-full.test.cjs tests/renderer.test.cjs tests/ui.test.cjs",
+    "test:e2e": "node --test --test-isolation=none tests/e2e-full.test.cjs",
+    "check": "node scripts/check.cjs",
+    "license": "node tools/license.cjs",
+    "pack": "electron-builder --dir",
+    "pack:portable": "node scripts/portable.cjs",
+    "pack:lab-desktop": "node scripts/package-lab-desktop.cjs",
+    "build:desktop": "powershell -ExecutionPolicy Bypass -File scripts/build-setup-to-desktop.ps1",
+    "build:integrated": "powershell -ExecutionPolicy Bypass -File scripts/build-integrated-desktop.ps1",
+    "play": "powershell -ExecutionPolicy Bypass -File scripts/play.ps1",
+    "desktop": "electron . -- --play",
+    "pack:server": "node scripts/server-bundle.cjs",
+    "dist": "electron-builder --win nsis",
+    "lab:setup": "node scripts/lab-setup.cjs",
+    "lab:seed-device": "electron scripts/lab-seed-electron.cjs",
+    "lab:pack": "npm.cmd run pack:portable",
+    "lab:server": "node --env-file=.env scripts/lab-server.cjs",
+    "lab:start": "electron . -- --lab",
+    "demo": "powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^41.0.0",
+    "electron-builder": "^26.0.12",
+    "jsdom": "^30.1.2",
+    "jsqr": "^1.4.0",
+    "pg-mem": "^3.0.5"
+  },
+  "build": {
+    "appId": "local.militaryaffairs.desktop",
+    "productName": "Military Affairs",
+    "artifactName": "Military-Affairs-Setup-${version}.${ext}",
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/@electric-sql/pglite/**"
+    ],
+    "files": [
+      "desktop/**/*",
+      "server/**/*",
+      "scripts/lab-sample-data.cjs",
+      "renderer/**/*",
+      "css/**/*",
+      "fonts/**/*",
+      "shared/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "artifacts"
+    },
+    "extraResources": [
+      { "from": "private/ca-cert.pem", "to": "lab-demo/ca-cert.pem" },
+      { "from": "private/ca-cert.pem", "to": "private/ca-cert.pem" },
+      { "from": "private/server-cert.pem", "to": "private/server-cert.pem" },
+      { "from": "private/server-key.pem", "to": "private/server-key.pem" }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
