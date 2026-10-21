@@ -81,7 +81,13 @@ function receiptHeightMm(scrollHeightPx, settings = {}) {
 
 /** Measures the rendered document and returns the receipt page height in mm. */
 async function measureReceiptHeight(webContents, settings = {}) {
-  const px = await webContents.executeJavaScript('Math.ceil(document.body.getBoundingClientRect().height)');
+  // Wait for web fonts (they change line heights), then take the tallest of the usual measures so nothing is cut off.
+  const px = await webContents.executeJavaScript(
+    `document.fonts.ready.then(() => {
+      const receipt = document.getElementById('receipt');
+      return Math.ceil(Math.max(document.body.getBoundingClientRect().height, receipt ? receipt.scrollHeight : 0));
+    })`,
+  );
   return receiptHeightMm(Number(px) || 0, settings);
 }
 
