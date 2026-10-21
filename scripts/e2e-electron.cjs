@@ -196,6 +196,9 @@ async function main() {
         .sort(),
       ['entry', 'exit'],
     );
+    const permitView = ok(await desktop('request', 'GET', `/api/permit?id=${exit.id}`), 'permit view');
+    for (const key of ['no', 'name', 'rank', 'military_no', 'company', 'reason', 'exit_at', 'expected_return'])
+      assert.ok(permitView[key] !== undefined && permitView[key] !== null && permitView[key] !== '', 'permit field ' + key);
     ok(await desktop('document', { type: 'voucher', id: exit.id, mode: 'preview' }), 'voucher preview');
 
     // Outlet add -> delete, dashboard, and a bulk soldier import through the allow-listed API.

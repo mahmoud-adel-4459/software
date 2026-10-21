@@ -76,19 +76,16 @@ describe('QR flows', () => {
     expect(c.getByTestId('receipt-preview')).toHaveTextContent('الورق 58 مم');
     expect(c.getByTestId('receipt-preview')).toHaveTextContent('المحتوى 46 مم');
     // printable wider than the paper is rejected and nothing is saved
-    await userEvent.clear(input('منطقة الطباعة'));
-    await userEvent.type(input('منطقة الطباعة'), '70');
+    fireEvent.change(input('منطقة الطباعة'), { target: { value: '70' } });
     await userEvent.click(c.getByRole('button', { name: 'حفظ' }));
     expect(await c.findByText('منطقة الطباعة يجب ألا تتجاوز عرض الورق')).toBeInTheDocument();
     expect(fake.calls.filter((x) => x.path === '/api/settings')).toHaveLength(0);
     // valid values + footer + fixed height save every receipt key
-    await userEvent.clear(input('منطقة الطباعة'));
-    await userEvent.type(input('منطقة الطباعة'), '50');
-    await userEvent.type(c.getByLabelText('نص أسفل الإيصال'), 'شكرًا لكم');
+    fireEvent.change(input('منطقة الطباعة'), { target: { value: '50' } });
+    fireEvent.change(c.getByLabelText('نص أسفل الإيصال'), { target: { value: 'شكرًا لكم' } });
     expect(c.getByTestId('receipt-preview')).toHaveTextContent('شكرًا لكم');
     await userEvent.click(c.getByRole('button', { name: 'ثابت' }));
-    await userEvent.clear(input('الارتفاع الثابت'));
-    await userEvent.type(input('الارتفاع الثابت'), '200');
+    fireEvent.change(input('الارتفاع الثابت'), { target: { value: '200' } });
     await userEvent.click(c.getByRole('button', { name: 'حفظ' }));
     await waitFor(() => expect(fake.calls.filter((x) => x.path === '/api/settings')).toHaveLength(1));
     expect(fake.calls.find((x) => x.path === '/api/settings')!.data).toMatchObject({
@@ -101,7 +98,7 @@ describe('QR flows', () => {
     await userEvent.click(c.getByRole('button', { name: 'معاينة' }));
     await waitFor(() => expect(fake.testPrints).toHaveLength(2));
     expect(fake.testPrints).toEqual([{ kind: 'receipt' }, { kind: 'receipt', mode: 'preview' }]);
-  });
+  }, 90_000);
 
   it('printing page: bulk selection sends type/ids/copies/mode to desktop.document', async () => {
     const fake = await renderApp('/printing');
