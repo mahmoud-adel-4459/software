@@ -1,0 +1,16 @@
+node_modules/
+.npm-cache/
+.build-cache/
+artifacts/
+.env
+private/
+play-user-data/
+play-login.txt
+lab-user-data/
+*.log
+*.pem
+*.key
+*.pfx
+license.json
+device-request.json
+server-request.json
