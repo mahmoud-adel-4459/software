@@ -10,7 +10,10 @@ const keys = () => {
     publicKeyEncoding: { type: 'spki', format: 'pem' },
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
   });
-  return { publicKey: forge.pki.publicKeyFromPem(pair.publicKey), privateKey: forge.pki.privateKeyFromPem(pair.privateKey) };
+  return {
+    publicKey: forge.pki.publicKeyFromPem(pair.publicKey),
+    privateKey: forge.pki.privateKeyFromPem(pair.privateKey),
+  };
 };
 
 const certificate = (publicKey, name) => {
@@ -39,7 +42,9 @@ function issueServerCertificate(tlsDir, ca, caKey, { names = ['localhost'], ips 
     },
   ]);
   server.sign(caKey, forge.md.sha256.create());
-  fs.writeFileSync(path.join(tlsDir, 'server-key.pem'), forge.pki.privateKeyToPem(serverKeys.privateKey), { mode: 0o600 });
+  fs.writeFileSync(path.join(tlsDir, 'server-key.pem'), forge.pki.privateKeyToPem(serverKeys.privateKey), {
+    mode: 0o600,
+  });
   fs.writeFileSync(path.join(tlsDir, 'server-cert.pem'), forge.pki.certificateToPem(server));
 }
 
@@ -51,7 +56,10 @@ function createLocalTls(tlsDir, names) {
   const caKeys = keys();
   const ca = certificate(caKeys.publicKey, 'Military Affairs Local CA');
   ca.setIssuer(ca.subject.attributes);
-  ca.setExtensions([{ name: 'basicConstraints', cA: true }, { name: 'keyUsage', keyCertSign: true, cRLSign: true }]);
+  ca.setExtensions([
+    { name: 'basicConstraints', cA: true },
+    { name: 'keyUsage', keyCertSign: true, cRLSign: true },
+  ]);
   ca.sign(caKeys.privateKey, forge.md.sha256.create());
   fs.mkdirSync(tlsDir, { recursive: true });
   fs.writeFileSync(path.join(tlsDir, 'ca-key.pem'), forge.pki.privateKeyToPem(caKeys.privateKey), { mode: 0o600 });
@@ -64,7 +72,9 @@ function createLocalTls(tlsDir, names) {
 function covers(certPath, { names, ips }) {
   try {
     const san = (new X509Certificate(fs.readFileSync(certPath)).subjectAltName || '').toLowerCase();
-    return names.every((n) => san.includes(`dns:${n.toLowerCase()}`)) && ips.every((ip) => san.includes(`ip address:${ip}`));
+    return (
+      names.every((n) => san.includes(`dns:${n.toLowerCase()}`)) && ips.every((ip) => san.includes(`ip address:${ip}`))
+    );
   } catch {
     return false;
   }

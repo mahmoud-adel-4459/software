@@ -14,7 +14,11 @@ const { createHash, X509Certificate } = require('node:crypto');
 const ROLES = ['local', 'host', 'client'];
 const MODE_FLAGS = ['--play', '--standalone', '--remote'];
 const roleFile = () =>
-  path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Military Affairs', 'network.json');
+  path.join(
+    process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'),
+    'Military Affairs',
+    'network.json',
+  );
 
 function readRole() {
   try {
@@ -56,6 +60,9 @@ function pairingCode(caPem) {
   return hex.match(/.{4}/g).join('-');
 }
 
-const normalizeCode = (code) => String(code || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
+const normalizeCode = (code) =>
+  String(code || '')
+    .replace(/[^0-9a-f]/gi, '')
+    .toUpperCase();
 
 module.exports = { ROLES, readRole, writeRole, flagFor, relaunchAs, lanAddresses, pairingCode, normalizeCode };

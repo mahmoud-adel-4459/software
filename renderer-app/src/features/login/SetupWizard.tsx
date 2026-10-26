@@ -2,6 +2,7 @@ import FlagIcon from '@mui/icons-material/FlagOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
+import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
@@ -14,6 +15,7 @@ import { bridge, unwrap } from '@/api/client';
 import type { AppInfo } from '@/api/types';
 import { notify } from '@/lib/notify';
 import { tokens } from '@/theme/tokens';
+import { PairForm, switchNetworkRole } from './PairForm';
 
 const FLAG = 'setupComplete';
 
@@ -39,7 +41,7 @@ export function setupRequired(info: AppInfo | undefined): boolean {
   return !info.serverUrl || !info.caImported;
 }
 
-const LABELS = ['مرحبًا', 'الخادم', 'الشهادة', 'جاهز'];
+const LABELS = ['مرحبًا', 'جهاز الوحدة', 'الشهادة', 'جاهز'];
 
 /** First-run wizard: welcome, server URL, CA certificate, done. */
 export function SetupWizard({ info, onDone }: { info: AppInfo; onDone: () => void }) {
@@ -72,16 +74,19 @@ export function SetupWizard({ info, onDone }: { info: AppInfo; onDone: () => voi
 
   const body = [
     <Stack spacing={2} key="0">
-      <Typography variant="h4">تطبيق سطح المكتب — وليس موقعًا في المتصفح</Typography>
-      <Typography>لا تفتح عنوان الخادم في Chrome أو Edge للعمل اليومي؛ استخدم هذه النافذة للدخول والطباعة.</Typography>
+      <Typography variant="h4">جهاز البوابة</Typography>
+      <Typography>هذا الجهاز يعمل على بيانات جهاز الوحدة عبر الشبكة. ستحتاج عنوان جهاز الوحدة ورمز الربط الظاهرين في إعداداته.</Typography>
       <Button variant="contained" onClick={info.labMode ? finish : next}>التالي</Button>
+      <Button variant="text" color="inherit" onClick={() => void switchNetworkRole('local')}>هذا ليس جهاز بوابة — تشغيله كجهاز مستقل</Button>
     </Stack>,
     <Stack spacing={2} key="1">
-      <Typography variant="h4">عنوان الخادم الآمن</Typography>
+      <Typography variant="h4">الربط بجهاز الوحدة</Typography>
+      <PairForm initialAddress={info.serverUrl || ''} onPaired={() => setStep(LABELS.length - 1)} />
+      <Divider>أو بملف شهادة</Divider>
       <TextField label="عنوان HTTPS" type="url" value={url} onChange={(e) => setUrl(e.target.value)} slotProps={{ htmlInput: { dir: 'ltr' } }} />
       <Stack direction="row" spacing={1}>
         <Button variant="tonal" onClick={back}>رجوع</Button>
-        <Button variant="contained" loading={busy} onClick={() => run(async () => { await unwrap(bridge().configure(url)); await refresh(); notify.success('تم حفظ عنوان الخادم'); next(); })}>حفظ والمتابعة</Button>
+        <Button variant="tonal" loading={busy} onClick={() => run(async () => { await unwrap(bridge().configure(url)); await refresh(); notify.success('تم حفظ عنوان الخادم'); next(); })}>حفظ العنوان واستيراد ملف الشهادة</Button>
       </Stack>
     </Stack>,
     <Stack spacing={2} key="2">

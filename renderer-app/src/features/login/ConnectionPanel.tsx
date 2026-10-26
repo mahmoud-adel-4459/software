@@ -3,6 +3,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -10,14 +11,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { bridge, unwrap } from '@/api/client';
 import type { AppInfo } from '@/api/types';
+import { ConfirmDialog } from '@/components/interactive';
 import { notify } from '@/lib/notify';
 import { tokens } from '@/theme/tokens';
+import { PairForm, switchNetworkRole } from './PairForm';
 
 /** Server connection settings: server URL and CA import. */
 export function ConnectionPanel({ info }: { info: AppInfo }) {
   const queryClient = useQueryClient();
   const [url, setUrl] = useState(info.serverUrl ?? '');
   const [saving, setSaving] = useState(false);
+  const [confirmGate, setConfirmGate] = useState(false);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['info'] });
 
   const saveUrl = async () => {
@@ -45,9 +49,26 @@ export function ConnectionPanel({ info }: { info: AppInfo }) {
 
   if (info.playMode) {
     return (
-      <Typography variant="body2" sx={{ color: tokens.onDark, textAlign: 'center', mt: 2 }}>
-        تجربة محلية — بدون ترخيص. المستخدم: <b>admin</b> · كلمة المرور في ملف play-login.txt
-      </Typography>
+      <Stack spacing={1} sx={{ alignItems: 'center', mt: 2 }}>
+        <Typography variant="body2" sx={{ color: tokens.onDark, textAlign: 'center' }}>
+          {info.networkRole === 'host'
+            ? 'جهاز الوحدة — البيانات مشتركة مع جهاز البوابة على الشبكة.'
+            : 'جهاز مستقل — البيانات على هذا الجهاز فقط.'}
+        </Typography>
+        {info.networkRole !== 'host' && (
+          <Button variant="text" size="small" sx={{ color: tokens.goldLight }} onClick={() => setConfirmGate(true)}>
+            هذا جهاز بوابة؟ اربطه بجهاز الوحدة
+          </Button>
+        )}
+        <ConfirmDialog
+          open={confirmGate}
+          title="تشغيل هذا الجهاز كجهاز بوابة"
+          confirmLabel="تحويل وإعادة التشغيل"
+          message="سيعمل هذا الجهاز على بيانات جهاز الوحدة عبر الشبكة. بياناته المحلية الحالية لا تُحذف، ويمكن الرجوع لها لاحقًا."
+          onClose={() => setConfirmGate(false)}
+          onConfirm={() => void switchNetworkRole('client')}
+        />
+      </Stack>
     );
   }
   return (
@@ -57,6 +78,15 @@ export function ConnectionPanel({ info }: { info: AppInfo }) {
       </AccordionSummary>
       <AccordionDetails>
         <Stack spacing={2}>
+          {info.networkRole === 'client' && !info.labMode && (
+            <>
+              <PairForm initialAddress={info.serverUrl || ''} />
+              <Button variant="text" color="inherit" onClick={() => void switchNetworkRole('local')}>
+                تشغيل هذا الجهاز كجهاز مستقل (إلغاء الربط)
+              </Button>
+              <Divider>أو يدويًا</Divider>
+            </>
+          )}
           {info.standaloneMode && info.loginHintPath && (
             <Typography variant="caption">كلمة مرور المسؤول المحلي: ملف login.txt داخل مجلد standalone في بيانات التطبيق.</Typography>
           )}

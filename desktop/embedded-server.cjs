@@ -58,7 +58,10 @@ async function startEmbeddedServer({ userDataDir, host = '127.0.0.1', port = 844
 
   // On the LAN the chain includes the CA so a gate PC can pair by checking its fingerprint.
   const cert = fs.readFileSync(boot.certPath, 'utf8') + (lan ? `\n${boot.ca}` : '');
-  const server = https.createServer({ cert, key: fs.readFileSync(boot.keyPath), minVersion: 'TLSv1.2' }, backend.handler);
+  const server = https.createServer(
+    { cert, key: fs.readFileSync(boot.keyPath), minVersion: 'TLSv1.2' },
+    backend.handler,
+  );
 
   let listenPort = port;
   await new Promise((resolve, reject) => {

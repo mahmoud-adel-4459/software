@@ -6,15 +6,21 @@ import { loginInput } from './auth.validator';
 // Compared against when the username is unknown, so response time does not reveal valid usernames.
 const DUMMY_HASH = `${'00'.repeat(16)}:${'00'.repeat(64)}`;
 
-/** Verifies credentials (rate-limited per device) and opens an in-memory session bound to the device. */
+/**
+ * Verifies credentials (rate-limited per device and per username, since without a license a LAN
+ * client can present a new device key on every attempt) and opens a session bound to the device.
+ */
 export async function login(ctx: Ctx) {
   const { store, sessions, deviceId, device, license } = ctx;
   sessions.registerLoginAttempt(deviceId);
   const { username, password } = loginInput(ctx.data);
+  const userKey = `user:${username.toLowerCase()}`;
+  sessions.registerLoginAttempt(userKey);
   const user = await store.user(username);
   const valid = await checkPassword(password, user?.password_hash || DUMMY_HASH);
   requireValue(user && valid, 'اسم المستخدم أو كلمة المرور غير صحيحة', 401);
   sessions.clearLoginAttempts(deviceId);
+  sessions.clearLoginAttempts(userKey);
   const token = sessions.create({ userId: user.id, deviceId, authVersion: user.auth_version });
   return {
     token,

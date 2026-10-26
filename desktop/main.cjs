@@ -126,11 +126,19 @@ async function main() {
     }
   };
   app.on('before-quit', (event) => {
-    if (!shuttingDown) { event.preventDefault(); void shutdown(); }
+    if (!shuttingDown) {
+      event.preventDefault();
+      void shutdown();
+    }
   });
-  app.on('window-all-closed', () => { void shutdown(); });
+  app.on('window-all-closed', () => {
+    void shutdown();
+  });
   win = createMainWindow();
-  win.on('closed', () => { win = null; void shutdown(); });
+  win.on('closed', () => {
+    win = null;
+    void shutdown();
+  });
   await win.loadFile(entryPath);
   if (mode.isSmokeTest()) await runSmokeTest(app, win);
 

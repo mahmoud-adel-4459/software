@@ -29,6 +29,7 @@ import { LOGO_SRC } from '@/lib/brand';
 import { ReceiptPrinterCard, receiptFrom } from './ReceiptPrinterCard';
 import { ExitReasonsCard } from './ExitReasonsCard';
 import { MemoSettingsCard } from './MemoSettingsCard';
+import { NetworkCard } from './NetworkCard';
 
 const schema = z.object({
   unitName: z.string().trim().min(1, 'اسم الوحدة مطلوب').max(100),
@@ -72,6 +73,7 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="الإعدادات" description="الشعار، الكانتينات والبوفيهات، فئات الزوار، أسباب الخروج، وخيارات الطباعة." />
+      <NetworkCard />
       <UnitForm />
       <MemoSettingsCard key={`memo-${catalog.data.settings.version}`} settings={catalog.data.settings} />
       <OutletsBlock kind="canteen" />

@@ -24,7 +24,18 @@ export interface AppInfo {
   standaloneMode: boolean;
   playMode: boolean;
   previewMode?: boolean;
+  networkRole?: NetworkRole;
   loginHintPath: string | null;
+}
+
+/** local: this PC only · host: the unit PC sharing its data · client: a gate PC using the unit PC. */
+export type NetworkRole = 'local' | 'host' | 'client';
+export interface NetworkInfo {
+  role: NetworkRole;
+  sharing: boolean;
+  addresses: string[];
+  hostname: string | null;
+  pairingCode: string | null;
 }
 
 export interface SoldierDetails {
@@ -469,6 +480,9 @@ export interface DesktopBridge {
   importCA(): Promise<BridgeResult<boolean>>;
   importBundledCA(): Promise<BridgeResult<unknown>>;
   exportDevice(): Promise<BridgeResult<boolean>>;
+  network(): Promise<BridgeResult<NetworkInfo>>;
+  setNetworkRole(role: NetworkRole): Promise<BridgeResult<boolean>>;
+  pair(arg: { address: string; code: string }): Promise<BridgeResult<{ serverUrl: string }>>;
   login(credentials: { username: string; password: string }): Promise<BridgeResult<Session>>;
   logout(): Promise<BridgeResult<unknown>>;
   request(method: 'GET' | 'POST', path: string, data?: unknown, requestId?: string): Promise<BridgeResult>;
