@@ -64,14 +64,15 @@ function labelStylesheet(widthMm, heightMm) {
  * top/bottom feed as padding so its measured height is the page height.
  */
 function receiptStylesheet(cfg, calibration = false) {
-  const root = calibration ? `width:${cfg.widthMm}mm` : `width:${cfg.contentMm}mm;margin:0 auto`;
+  const pageMm = cfg.printableMm;
+  const root = calibration ? `width:${pageMm}mm` : `width:${cfg.contentMm}mm;margin:0 auto`;
   const base = cfg.bold ? 600 : 500;
   const logo = `${cfg.logoMm}mm`;
   return [
-    `@page{size:${cfg.widthMm}mm auto;margin:0}`,
+    `@page{size:${pageMm}mm auto;margin:0}`,
     '*{box-sizing:border-box;box-shadow:none;border-radius:0;text-shadow:none;background:transparent;color:#000}',
-    `html{width:${cfg.widthMm}mm;margin:0;padding:0;background:#fff}`,
-    `body{display:flow-root;width:${cfg.widthMm}mm;margin:0;padding:${cfg.topFeedMm}mm 0 ${cfg.bottomFeedMm}mm;background:#fff;font-family:Plex,Arial,sans-serif;font-size:${cfg.fontPt}pt;line-height:${cfg.lineHeight};font-weight:${base};color:#000}`,
+    `html{width:${pageMm}mm;margin:0;padding:0;background:#fff}`,
+    `body{display:flow-root;width:${pageMm}mm;margin:0;padding:${cfg.topFeedMm}mm 0 ${cfg.bottomFeedMm}mm;background:#fff;font-family:Plex,Arial,sans-serif;font-size:${cfg.fontPt}pt;line-height:${cfg.lineHeight};font-weight:${base};color:#000}`,
     `#receipt{${root};overflow-wrap:anywhere;word-break:normal;text-align:center}`,
     'strong,b,h1,h2{font-weight:700}',
     '.rh{display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:1.5mm;border-bottom:1px dashed #000;margin-bottom:1.5mm}',

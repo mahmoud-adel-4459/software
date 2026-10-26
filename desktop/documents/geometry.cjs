@@ -102,7 +102,9 @@ function pageSpec(mode, settings = {}, receiptMm) {
     return { mode, widthMm, heightMm };
   }
   if (mode === 'receipt') {
-    return { mode, widthMm: receiptWidth(settings), heightMm: receiptMm || RECEIPT_MIN_MM };
+    // Thermal drivers reject pages wider than the print head (e.g. XP-90: 576 dots = 72 mm) and then
+    // shift and truncate the job, so the page is the printable width, not the roll width.
+    return { mode, widthMm: receiptConfig(settings).printableMm, heightMm: receiptMm || RECEIPT_MIN_MM };
   }
   return { mode: 'office', paper: settings.paper || 'A4', margins: settings.margins };
 }

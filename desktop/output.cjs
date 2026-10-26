@@ -279,7 +279,7 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
         `/api/canteen?soldierId=${encodeURIComponent(arg.soldierId)}&month=${encodeURIComponent(arg.month)}${outletQ}`,
       );
       const soldier = (await api('GET', `/api/soldier?id=${encodeURIComponent(arg.soldierId)}`)).soldier;
-      body = canteenStatement({ soldier, ...ledger });
+      body = canteenStatement({ soldier, ...ledger }, printedBy);
     } else if (arg.type === 'visitor-cards') {
       const numbers = arg.cardNos;
       if (!Array.isArray(numbers) || numbers.length < 1 || numbers.length > 24 ||

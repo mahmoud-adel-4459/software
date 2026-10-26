@@ -2,7 +2,7 @@ node_modules/
 .npm-cache/
 .build-cache/
 artifacts/
-.env
+.env*
 private/
 play-user-data/
 play-login.txt

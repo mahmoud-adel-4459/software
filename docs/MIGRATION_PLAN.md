@@ -248,5 +248,5 @@ renderer-app/                    (مجلد جديد بجانب renderer القد
 | P6–P7 | `renderer-app/` (React 19 + MUI 9 RTL)، 23 اختبارًا، كل الصفحات |
 | P8 | Electron يحمّل الباك اند والواجهة الجديدين؛ ترحيل تلقائي لبيانات PGlite عند أول تشغيل؛ تغليف `electron-builder` ناجح؛ `scripts/e2e-electron.cjs` ينجح على النسخة المطوّرة **والمغلَّفة** (`E2E_EXECUTABLE`) |
 
-**الكود القديم** (الخادم PostgreSQL والواجهة القديمة وأدوات المعاينة) منقول إلى `legacy-archive/` ولا يدخل في البناء ولا الاختبارات؛ يمكن حذفه بعد المراجعة.
+**الكود القديم** (الخادم PostgreSQL والواجهة القديمة وأدوات المعاينة) حُذف؛ بقي فقط `legacy-export/` (أداة تصدير البيانات من النسخة القديمة) ولا يدخل في البناء ولا الاختبارات.
 **الأوامر:** `npm run desktop` (تشغيل) · `npm run test:all` · `npm run test:electron` · `npm run native:electron` (وحدة SQLite الأصلية لـ Electron) · `npm run dist` (المثبّت).

@@ -274,6 +274,8 @@ export interface LedgerResponse {
   totalCents: number;
   month: string;
   outletId: string;
+  outletName?: string;
+  outletKind?: OutletKind;
 }
 
 export interface FitnessRecord {

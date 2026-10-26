@@ -65,7 +65,7 @@ async function render({ html, mode, settings, shrinkMm = 0, calibration = false,
           })()`)
         : null;
     if (capture) {
-      const px = Math.ceil((geometry.receiptConfig(settings).widthMm * 96) / 25.4);
+      const px = Math.ceil((geometry.receiptConfig(settings).printableMm * 96) / 25.4);
       await win.webContents.insertCSS('html,body{overflow:hidden!important}');
       win.setContentSize(px, 400);
       await win.webContents.executeJavaScript('document.fonts.ready.then(()=>0)');
@@ -178,7 +178,7 @@ async function main() {
       const r = await render({ html, mode: 'receipt', settings });
       check(
         `receipt ${label} ${tag}: pages=${r.pages}, size=${r.widthMm.toFixed(1)}x${r.heightMm.toFixed(1)}`,
-        r.pages === 1 && Math.abs(r.widthMm - cfg.widthMm) < 1 && Math.abs(r.heightMm - r.spec.heightMm) < 1,
+        r.pages === 1 && Math.abs(r.widthMm - cfg.printableMm) < 1 && Math.abs(r.heightMm - r.spec.heightMm) < 1,
         'expected exactly 1 page of the measured size',
       );
       const o = r.overflow;
@@ -208,7 +208,7 @@ async function main() {
     const body = testReceipt(settings, qrUrl);
     const html = documentHtml({ title: 't', body, settings, fontUrl: FONT, mode: 'receipt', calibration: true });
     const r = await render({ html, mode: 'receipt', settings, calibration: true });
-    check(`calibration ${JSON.stringify(extra)}: pages=${r.pages}, width=${r.widthMm.toFixed(1)}`, r.pages === 1 && Math.abs(r.widthMm - geometry.receiptConfig(settings).widthMm) < 1, 'expected 1 page');
+    check(`calibration ${JSON.stringify(extra)}: pages=${r.pages}, width=${r.widthMm.toFixed(1)}`, r.pages === 1 && Math.abs(r.widthMm - geometry.receiptConfig(settings).printableMm) < 1, 'expected 1 page');
   }
   // PNG samples (default 80/72 settings) for visual review.
   const sample = { unitName: 'الكتيبة الثالثة مشاة', parentFormation: 'المنطقة المركزية', receiptFooter: 'شكرًا لكم' };

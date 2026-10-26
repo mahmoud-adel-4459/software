@@ -97,6 +97,8 @@ export async function monthlyLedger(ctx: Ctx) {
     totalCents: rows.reduce((sum, row) => sum + row.amount_cents, 0),
     month,
     outletId,
+    outletName: outlet.name,
+    outletKind: outlet.kind,
   };
 }
 

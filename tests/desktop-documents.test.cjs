@@ -148,6 +148,8 @@ test('receipt config: defaults, clamping, content box, height modes, copies', ()
   assert.equal(g.receiptHeightMm(100, { receiptHeightMode: 'auto', receiptHeightMm: 300 }), 40);
   const spec = g.pageSpec('receipt', { receiptWidthMm: 58 }, 123);
   assert.deepEqual([spec.widthMm, spec.heightMm], [58, 123]);
+  const xp90 = g.pageSpec('receipt', { receiptWidthMm: 80, receiptPrintableWidthMm: 72 }, 150);
+  assert.equal(xp90.widthMm, 72, 'the printed page never exceeds the print head width');
 });
 
 test('receipt html: thermal css, content box, footer, bold, no table/colors', () => {
@@ -162,7 +164,7 @@ test('receipt html: thermal css, content box, footer, bold, no table/colors', ()
   assert.match(html, /#receipt\{width:66mm;margin:0 auto;overflow-wrap:anywhere/);
   assert.match(html, /font-size:12pt/);
   assert.match(html, /font-weight:500/);
-  assert.match(html, /@page\{size:80mm auto;margin:0\}/);
+  assert.match(html, /@page\{size:72mm auto;margin:0\}/);
   assert.match(html, /<div class="foot">شكرًا لكم<\/div>/);
   assert.equal(html.includes('<img class="logo"'), false);
   assert.equal(html.includes('<table'), false);
@@ -171,8 +173,8 @@ test('receipt html: thermal css, content box, footer, bold, no table/colors', ()
   assert.match(documentHtml({ title: 't', body: '', settings: { receiptBold: true }, fontUrl: 'f', mode: 'receipt' }), /font-weight:600/);
   assert.match(voucher({ no: 1, rank: 'ر', name: 'ن', military_no: '1', company: 'ج', reason: 'س', exit_at: new Date().toISOString(), expected_return: new Date().toISOString() }), /class="r"/);
   const cal = testReceipt({ receiptWidthMm: 80, receiptPrintableWidthMm: 72 }, 'data:image/png;base64,AA');
-  assert.match(cal, /<svg width="80mm"/);
-  assert.match(cal, /<rect x="4" y="11" width="72"/);
+  assert.match(cal, /<svg width="72mm"/);
+  assert.match(cal, /<rect x="0" y="11" width="72"/);
   assert.match(cal, /الورق: 80 مم · الطباعة: 72 مم/);
   assert.match(cal, /class="qr"/);
 });

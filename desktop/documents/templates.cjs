@@ -9,7 +9,9 @@ const join = (parts) => parts.join('');
 // ---- Thermal receipt building blocks (flex lines, no tables/borders; styled in page.cjs) ----
 /** `label … value` line; empty values are skipped. */
 const line = (label, value) =>
-  value === '' || value == null ? '' : `<div class="r"><span class="k">${esc(label)}</span><span class="v">${esc(value)}</span></div>`;
+  value === '' || value == null
+    ? ''
+    : `<div class="r"><span class="k">${esc(label)}</span><span class="v">${esc(value)}</span></div>`;
 const sep = '<hr class="sep">';
 const signLine = (label) => `<span>${esc(label)}<i></i></span>`;
 
@@ -58,18 +60,22 @@ function testLabel(qr) {
  */
 function testReceipt(settings = {}, qr = '') {
   const cfg = receiptConfig(settings);
-  const W = cfg.widthMm;
   const pw = cfg.printableMm;
-  const x0 = (W - pw) / 2;
+  const W = pw;
+  const x0 = 0;
   const cx0 = (W - cfg.contentMm) / 2;
   const H = 22;
   const ticks = [];
   for (let mm = 0; mm <= W; mm++) {
     const x = Math.min(Math.max(mm, 0.15), W - 0.15);
     const len = mm % 10 === 0 ? 5 : mm % 5 === 0 ? 3.5 : 2;
-    ticks.push(`<line x1="${x}" y1="0" x2="${x}" y2="${len}" stroke="#000" stroke-width="${mm % 10 === 0 ? 0.35 : 0.2}"/>`);
+    ticks.push(
+      `<line x1="${x}" y1="0" x2="${x}" y2="${len}" stroke="#000" stroke-width="${mm % 10 === 0 ? 0.35 : 0.2}"/>`,
+    );
     if (mm % 10 === 0 && mm < W)
-      ticks.push(`<text x="${Math.min(Math.max(mm, 2.2), W - 2.2)}" y="9" font-size="3" text-anchor="middle" fill="#000">${mm}</text>`);
+      ticks.push(
+        `<text x="${Math.min(Math.max(mm, 2.2), W - 2.2)}" y="9" font-size="3" text-anchor="middle" fill="#000">${mm}</text>`,
+      );
   }
   const svg =
     `<svg width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Arial,sans-serif">` +
@@ -82,7 +88,7 @@ function testReceipt(settings = {}, qr = '') {
     `<text x="${W / 2}" y="17.2" font-size="2.6" text-anchor="middle" fill="#000">${pw} mm</text>` +
     '</svg>';
   const lines = [
-    `الورق: ${W} مم · الطباعة: ${pw} مم`,
+    `الورق: ${cfg.widthMm} مم · الطباعة: ${pw} مم`,
     `الهامش: ${cfg.marginMm} مم · المحتوى: ${cfg.contentMm} مم`,
     `الخط: ${cfg.fontPt} نقطة · التباعد: ${cfg.lineHeight} · ${cfg.bold ? 'عريض' : 'عادي'}`,
     `الارتفاع: ${cfg.heightMode === 'fixed' ? cfg.heightMm + ' مم (ثابت)' : 'تلقائي'} · نسخ: ${cfg.copies}`,
@@ -155,23 +161,30 @@ function voucher(permit, printedBy = '') {
 
 // ---- Canteen -------------------------------------------------------------------------------
 
+const outletWord = (kind) => (kind === 'buffet' ? 'بوفيه' : 'كانتين');
+
 function receiptStatus(t, isReversal) {
   if (isReversal) return 'حركة عكسية / تصحيح';
   if (t.reversed_by) return 'تم عكس هذه العملية';
-  return t.amount_cents > 0 ? 'مشتريات كانتين' : '';
+  return t.amount_cents > 0 ? `مشتريات ${outletWord(t.outlet_kind)}` : '';
 }
+
+const transactionState = (t) => (t.reversal_of ? 'حركة عكسية' : t.reversed_by ? 'تم عكسها' : 'سارية');
 
 function canteenReceipt(t, printedBy = '', printNumber = 0) {
   const isReversal = t.amount_cents < 0 || t.reversal_of;
-  const place = t.outlet_name || 'الكانتين';
+  const place = t.outlet_name || `ال${outletWord(t.outlet_kind)}`;
   const status = receiptStatus(t, isReversal);
   return join([
     `<section class="rcpt"><h2>${esc(isReversal ? `إيصال تصحيح — ${place}` : `إيصال ${place}`)}</h2>`,
-    printNumber > 0 ? `<div class="t"><strong>${printNumber === 1 ? 'أصل الإيصال' : `نسخة رقم ${esc(printNumber - 1)}`}</strong></div>` : '',
+    printNumber > 0
+      ? `<div class="t"><strong>${printNumber === 1 ? 'أصل الإيصال' : `نسخة رقم ${esc(printNumber - 1)}`}</strong></div>`
+      : '',
     `<div class="t"><strong>${esc(t.rank)} / ${esc(t.name)}</strong></div>`,
     sep,
     line('الرقم العسكري', t.military_no),
     line('السرية', t.company),
+    line('الوحدة', t.unit),
     line('التاريخ', cell('at', t.at)),
     `<div class="amt"><span class="k">المبلغ</span><strong>${money(Math.abs(t.amount_cents))} ج.م</strong></div>`,
     line('ملاحظات', t.notes),
@@ -183,20 +196,27 @@ function canteenReceipt(t, printedBy = '', printNumber = 0) {
   ]);
 }
 
-function canteenStatement({ soldier, transactions, totalCents, month }) {
-  const rows = (transactions || [])
+function canteenStatement({ soldier, transactions, totalCents, month, outletName, outletKind }, printedBy = '') {
+  const list = transactions || [];
+  const rows = list
     .map(
       (r) =>
-        `<tr><td>${esc(cell('at', r.at))}</td><td>${esc(cell('amount_cents', r.amount_cents))}</td><td>${esc(r.notes || '')}</td></tr>`,
+        `<tr><td>${esc(cell('at', r.at))}</td><td>${esc(cell('amount_cents', r.amount_cents))}</td><td>${esc(r.notes || '')}</td><td>${esc(transactionState(r))}</td></tr>`,
     )
     .join('');
+  const place = outletName || `ال${outletWord(outletKind)}`;
+  const unit = soldier.unit ? ` · الوحدة: ${esc(soldier.unit)}` : '';
   return join([
-    `<section class="voucher canteen-statement"><h2>كشف حساب الكانتين — ${esc(month)}</h2>`,
+    `<section class="voucher canteen-statement"><h2>كشف حساب ${esc(place)} — <bdi dir="ltr">${esc(month)}</bdi></h2>`,
     `<p>${esc(soldier.rank)} / ${esc(soldier.name)}</p>`,
-    `<p>الرقم العسكري: ${esc(soldier.military_no)} · السرية: ${esc(soldier.company)}</p>`,
-    '<table><thead><tr><th>التاريخ</th><th>المبلغ (ج.م)</th><th>ملاحظات</th></tr></thead>',
-    `<tbody>${rows || '<tr><td colspan="3">لا توجد حركات</td></tr>'}</tbody></table>`,
-    `<p>إجمالي الشهر: <strong>${money(totalCents || 0)} ج.م</strong></p></section>`,
+    `<p>الرقم العسكري: ${esc(soldier.military_no)} · السرية: ${esc(soldier.company)}${unit}</p>`,
+    '<table><thead><tr><th>التاريخ</th><th>المبلغ (ج.م)</th><th>ملاحظات</th><th>الحالة</th></tr></thead>',
+    `<tbody>${rows || '<tr><td colspan="4">لا توجد حركات</td></tr>'}</tbody></table>`,
+    `<p>عدد العمليات: ${list.length} · إجمالي الشهر: <strong>${money(totalCents || 0)} ج.م</strong></p>`,
+    printedBy
+      ? `<p>طُبع بواسطة: <bdi>${esc(printedBy)}</bdi> · <bdi>${esc(cell('at', new Date().toISOString()))}</bdi></p>`
+      : '',
+    '</section>',
   ]);
 }
 

@@ -43,7 +43,7 @@ async function startEmbeddedServer({ userDataDir, host = '127.0.0.1', port = 844
     backupKeyHex: ensureBackupKey(boot.root),
     backupDirectory: path.join(boot.root, 'backups'),
     admin: { username: boot.meta.adminUsername, name: boot.meta.adminName, password: boot.meta.adminPassword },
-    seedDemo: true,
+    seedDemo: playMode,
   });
   backend.start();
 

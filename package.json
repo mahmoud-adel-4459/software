@@ -4,6 +4,9 @@
   "private": true,
   "description": "Arabic military affairs LAN desktop client and server",
   "main": "desktop/main.cjs",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "start": "node scripts/ensure-built.cjs && electron . -- --standalone",
     "start:remote": "node scripts/ensure-built.cjs && electron . -- --remote",

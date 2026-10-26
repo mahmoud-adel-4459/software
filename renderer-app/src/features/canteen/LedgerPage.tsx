@@ -109,7 +109,7 @@ export function LedgerPage({ kind }: { kind: OutletKind }) {
       <div style={{ height: 16 }} />
       <SoldierLookup selected={soldier} onSelect={setSoldier} />
       {outletId && (
-        <SectionCard title="كشف حساب الكانتين الشهري" subtitle="اختر العسكري والشهر ثم معاينة أو طباعة أو حفظ PDF">
+        <SectionCard title={`كشف حساب ال${label} الشهري`} subtitle="اختر العسكري والشهر ثم معاينة أو طباعة أو حفظ PDF">
           <Stack direction="row" spacing={2} sx={{ mb: 2, alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
             <TextField label="شهر الحساب" type="month" value={month} onChange={(e) => setMonth(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ maxWidth: 220 }} />
           </Stack>

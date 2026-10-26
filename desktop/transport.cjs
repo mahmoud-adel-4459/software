@@ -17,6 +17,9 @@ function validateServer(value) {
   }
   return url.origin;
 }
+const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
+const LONG_RUNNING = /^\/api\/(backup\/(create|import|restore)|import\/(preview|apply))$/;
+
 function callServer(config, identity, token, method, apiPath, data, requestId) {
   const body = method === 'GET' ? '' : JSON.stringify(data || {});
   const deviceId = identity.id;
@@ -45,18 +48,20 @@ function callServer(config, identity, token, method, apiPath, data, requestId) {
         headers,
         ca: config.ca || undefined,
         rejectUnauthorized: true,
-        timeout: 8000,
+        timeout: LONG_RUNNING.test(apiPath) ? 10 * 60 * 1000 : 8000,
       },
       (res) => {
-        let raw = '';
+        const chunks = [];
+        let size = 0;
         res.on('data', (chunk) => {
-          raw += chunk.toString('utf8');
-          if (Buffer.byteLength(raw) > 64 * 1024 * 1024) req.destroy(new Error('استجابة الخادم أكبر من المسموح'));
+          size += chunk.length;
+          if (size > MAX_RESPONSE_BYTES) return req.destroy(new Error('استجابة الخادم أكبر من المسموح'));
+          chunks.push(chunk);
         });
         res.on('error', reject);
         res.on('end', () => {
           try {
-            const result = JSON.parse(raw);
+            const result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
             if (res.statusCode < 200 || res.statusCode >= 300) {
               const error = new Error(result.error || 'تعذر تنفيذ الطلب');
               error.status = res.statusCode;
@@ -74,9 +79,7 @@ function callServer(config, identity, token, method, apiPath, data, requestId) {
       if (msg.includes('مهلة')) return reject(error);
       if (error.code === 'ECONNREFUSED' || msg.includes('ECONNREFUSED')) {
         return reject(
-          new Error(
-            'الخادم لا يستجيب على هذا العنوان. شغّل lab:server أو Demo-Lab\\تشغيل-التجربة.cmd واترك النافذة مفتوحة.',
-          ),
+          new Error('الخادم لا يستجيب على هذا العنوان. شغّل الخادم (npm run server) واترك النافذة مفتوحة.'),
         );
       }
       if (error.code === 'ENOTFOUND' || msg.includes('ENOTFOUND')) {
@@ -91,7 +94,7 @@ function callServer(config, identity, token, method, apiPath, data, requestId) {
       }
       return reject(
         new Error(
-          'تعذر الاتصال الآمن بالخادم؛ تحقق من العنوان والشبكة وشهادة الخادم — تأكد أن الخادم يعمل (lab:server أو خدمة الإنتاج).',
+          'تعذر الاتصال الآمن بالخادم؛ تحقق من العنوان والشبكة وشهادة الخادم — تأكد أن الخادم يعمل (npm run server أو خدمة الإنتاج).',
         ),
       );
     });
