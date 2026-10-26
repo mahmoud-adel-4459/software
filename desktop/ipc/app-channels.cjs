@@ -164,4 +164,4 @@ function registerAppChannels({ expose, app, dialog, clipboard, connection, getWi
   });
 }
 
-module.exports = { registerAppChannels };
+module.exports = { registerAppChannels, normalizeAddress, fetchPresentedCa };
