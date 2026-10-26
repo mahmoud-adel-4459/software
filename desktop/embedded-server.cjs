@@ -4,9 +4,12 @@
  * file under userData. Replaces the former PostgreSQL/PGlite server.
  */
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const https = require('node:https');
 const { ensureStandalone, ensureBackupKey } = require('./standalone-bootstrap.cjs');
+const { ensureLanCertificate } = require('./local-tls.cjs');
+const { lanAddresses } = require('./network-role.cjs');
 
 /** Electron needs its own build of better-sqlite3 (see scripts/build-native-electron.cjs). */
 function configureNativeBinding() {
@@ -28,12 +31,18 @@ async function migrateLegacyDatabase(boot, backend) {
 }
 
 /**
- * @param {{ userDataDir: string, host?: string, port?: number, playMode?: boolean }} opts
+ * @param {{ userDataDir: string, host?: string, port?: number, playMode?: boolean, lan?: boolean }} opts
+ *   lan: share this PC's server with gate PCs (listen on every interface, certificate for the LAN name/addresses).
  */
-async function startEmbeddedServer({ userDataDir, host = '127.0.0.1', port = 8443, playMode = false }) {
+async function startEmbeddedServer({ userDataDir, host = '127.0.0.1', port = 8443, playMode = false, lan = false }) {
   configureNativeBinding();
   const backendRoot = path.join(__dirname, '../backend');
   const boot = ensureStandalone(userDataDir, { playMode });
+  if (lan) {
+    ensureLanCertificate(boot.tlsDir, { hostname: os.hostname(), ips: lanAddresses() });
+    boot.ca = fs.readFileSync(path.join(boot.tlsDir, 'ca-cert.pem'), 'utf8');
+    host = '0.0.0.0';
+  }
   await migrateLegacyDatabase(boot, backendRoot);
 
   const { createBackend } = require(path.join(backendRoot, 'dist/index.cjs'));
@@ -47,14 +56,17 @@ async function startEmbeddedServer({ userDataDir, host = '127.0.0.1', port = 844
   });
   backend.start();
 
-  const server = https.createServer(
-    { cert: fs.readFileSync(boot.certPath), key: fs.readFileSync(boot.keyPath), minVersion: 'TLSv1.2' },
-    backend.handler,
-  );
+  // On the LAN the chain includes the CA so a gate PC can pair by checking its fingerprint.
+  const cert = fs.readFileSync(boot.certPath, 'utf8') + (lan ? `\n${boot.ca}` : '');
+  const server = https.createServer({ cert, key: fs.readFileSync(boot.keyPath), minVersion: 'TLSv1.2' }, backend.handler);
 
   let listenPort = port;
   await new Promise((resolve, reject) => {
     server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE' && lan) {
+        reject(new Error(`المنفذ ${port} مستخدم على هذا الجهاز؛ أغلق البرنامج الآخر الذي يستخدمه ثم أعد التشغيل.`));
+        return;
+      }
       if (err.code === 'EADDRINUSE' && listenPort === port) {
         listenPort = port + 1;
         server.listen(listenPort, host, resolve);
@@ -67,6 +79,8 @@ async function startEmbeddedServer({ userDataDir, host = '127.0.0.1', port = 844
 
   return {
     origin: `https://${host === '0.0.0.0' ? '127.0.0.1' : host}:${listenPort}`,
+    port: listenPort,
+    lan,
     ca: boot.ca,
     loginPath: boot.loginPath,
     async shutdown() {

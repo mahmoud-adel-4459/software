@@ -42,7 +42,13 @@ function selectUserDataFolder() {
 /** Standalone/play: start the embedded server on this PC and point the connection at it. */
 async function startStandaloneServer(connection, userDataDir) {
   const { startEmbeddedServer } = require('./embedded-server.cjs');
-  const server = await startEmbeddedServer({ userDataDir, host: '127.0.0.1', port: 8443, playMode: mode.isPlayMode() });
+  const server = await startEmbeddedServer({
+    userDataDir,
+    host: '127.0.0.1',
+    port: 8443,
+    playMode: mode.isPlayMode(),
+    lan: mode.networkRoleInEffect() === 'host',
+  });
   connection.useEmbeddedServer(server);
   fs.writeFileSync(path.join(userDataDir, 'standalone.enabled'), '1', 'utf8');
   if (mode.isPlayMode() && server.loginPath && fs.existsSync(server.loginPath)) {
@@ -137,5 +143,6 @@ async function main() {
 
 main().catch((error) => {
   console.error(error.message);
+  dialog.showErrorBox(APP_NAME, `تعذر تشغيل البرنامج:\n${error.message}`);
   app.exit(1);
 });
