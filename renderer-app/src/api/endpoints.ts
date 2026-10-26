@@ -27,6 +27,8 @@ import type {
   Summary,
   UserRow,
   Visitor,
+  VisitorCard,
+  PersonnelRecord,
 } from './types';
 
 export type ImportPath = '/api/soldiers/import' | '/api/visitors/import' | '/api/fitness/import' | '/api/canteen/import';
@@ -50,8 +52,11 @@ export const api = {
   soldiers: (p: { q?: string; offset?: number; archived?: boolean }) =>
     get<SoldiersResponse>(`/api/soldiers${qs({ q: p.q, offset: p.offset ?? 0, archived: p.archived ? 'true' : 'false' })}`),
   soldier: (id: string) => get<SoldierRecord>(`/api/soldier${qs({ id })}`),
+  personnelRecords: (soldierId: string) => get<{ records: PersonnelRecord[] }>(`/api/soldier/records${qs({ soldierId })}`).then(r => r.records),
   gateSoldier: (militaryNo: string) => get<GateSoldierResponse>(`/api/gate/soldier${qs({ militaryNo })}`),
   gateVisitor: (id: string) => get<GateVisitorResponse>(`/api/gate/visitor${qs({ id })}`),
+  visitorCards: () => get<{ cards: VisitorCard[] }>('/api/visitor-cards').then(r => r.cards),
+  visitorCard: (cardNo: number) => get<VisitorCard>(`/api/gate/visitor-card${qs({ cardNo })}`),
   attachment: (id: string) => get<AttachmentFile>(`/api/attachment${qs({ id })}`),
   gateMove: (body: GateMovementBody, requestId: string) => post<GateMovementResult>('/api/gate', body, requestId),
   gateVisitorMove: (
@@ -81,7 +86,11 @@ export const api = {
   // dedicated channels (no network from the renderer)
   qr: async (soldierId: string) => toQrSrc(await unwrap<unknown>(bridge().qr(soldierId))),
   qrVisitor: async (visitorId: string) => toQrSrc(await unwrap<unknown>(bridge().qrVisitor(visitorId))),
-  document: (arg: DocumentArg) => unwrap(bridge().document(arg)),
+  document: async (arg: DocumentArg) => {
+    const result = await unwrap(bridge().document(arg));
+    if (result === false) throw new ApiError('تم إلغاء العملية؛ لم يتم إرسال طباعة أو حفظ ملف');
+    return result;
+  },
   excelExport: (arg: ExcelWorkbookArg) => unwrap<boolean>(bridge().excelExport(arg)),
   excelTemplate: (arg: ExcelWorkbookArg) => unwrap<boolean>(bridge().excelTemplate(arg)),
   excelImport: () => unwrap<ExcelImportFile | null>(bridge().excelImport()),

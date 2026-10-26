@@ -9,12 +9,16 @@ const ID_PATTERN = /^[0-9a-f-]{36}$/i;
 // 1200 px keeps the dense modules crisp when printed on a 3.5 x 4 inch label.
 const QR_OPTIONS = { errorCorrectionLevel: 'L', margin: 2, width: 1200 };
 
-function registerSessionChannels({ expose, connection }) {
+function registerSessionChannels({ expose, connection, onSignedIn = () => {} }) {
   const requireSession = () => {
     if (!connection.signedIn) throw new Error('سجل الدخول أولًا');
   };
 
-  expose('app:login', (credentials) => connection.login(credentials));
+  expose('app:login', async (credentials) => {
+    const session = await connection.login(credentials);
+    onSignedIn();
+    return session;
+  });
 
   expose('app:logout', async () => {
     await connection.logout();

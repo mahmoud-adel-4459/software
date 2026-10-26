@@ -12,7 +12,7 @@ import { ensureAdminUser, seedSampleData, type AdminSeed } from '@/seed';
 export interface CreateBackendOptions {
   /** SQLite file (created and migrated when missing). */
   dbPath: string;
-  licenseProvider: LicenseProvider;
+  licenseProvider?: LicenseProvider;
   serverId: string;
   /** 64 hex characters; together with backupDirectory it enables encrypted backups. */
   backupKeyHex?: string;

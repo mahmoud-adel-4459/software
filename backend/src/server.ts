@@ -1,21 +1,13 @@
 import fs from 'node:fs';
 import https from 'node:https';
-import { createBackend, fileLicenseProvider, serverFingerprint } from '@/index';
+import { createBackend } from '@/index';
 import { loadEnv } from '@/config/env';
 
 /** Standalone HTTPS service (LAN mode): same API as the embedded one, SQLite file on this machine. */
 async function main(): Promise<void> {
   const env = loadEnv();
-  const license = fileLicenseProvider(
-    env.LICENSE_PUBLIC_KEY,
-    env.LICENSE_FILE,
-    env.SERVER_ID,
-    serverFingerprint(env.SERVER_ID),
-  );
-  license(); // Fail closed before listening when the installation is not licensed.
   const backend = await createBackend({
     dbPath: env.DATABASE_FILE,
-    licenseProvider: license,
     serverId: env.SERVER_ID,
     ...(env.BACKUP_KEY_HEX && env.BACKUP_DIRECTORY
       ? { backupKeyHex: env.BACKUP_KEY_HEX, backupDirectory: env.BACKUP_DIRECTORY }

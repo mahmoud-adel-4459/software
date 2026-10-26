@@ -4,9 +4,12 @@ import test from 'node:test';
 import { hashPassword } from '@/common/utils/crypto';
 import { cairoDate } from '@/common/utils/time';
 import { createTestApp } from './helpers';
+import { completeSoldierInput } from './soldier.fixture';
 
 const DEFAULT_OUTLET = '00000000-0000-0000-0000-000000000010';
 const soldierRow = (n: number, extra: Record<string, unknown> = {}) => ({
+  ...completeSoldierInput({}),
+  ...completeSoldierInput({}).details,
   name: `جندي ${n}`,
   militaryNo: 700000 + n,
   nationalId: 30101010100000 + n,

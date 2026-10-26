@@ -10,6 +10,7 @@ import TextField from '@mui/material/TextField';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api } from '@/api/endpoints';
+import { errorMessage } from '@/api/client';
 import type { LedgerTransaction, OutletKind, Soldier } from '@/api/types';
 import { KpiCard, PageHeader, SectionCard } from '@/components/basic';
 import { DataTable, type Column } from '@/components/DataTable';
@@ -55,8 +56,14 @@ export function LedgerPage({ kind }: { kind: OutletKind }) {
       setAmount('');
       setNotes('');
       notify.success('تم تسجيل المشتريات');
+      if (res?.id) {
+        try {
+          await api.document({ type: 'canteen', id: res.id, mode: 'print' });
+        } catch (error) {
+          notify.error(`تم حفظ العملية، لكن تعذرت الطباعة: ${errorMessage(error)}. أعد طباعة الإيصال من قائمة العمليات بدون تسجيل المبلغ مرة أخرى.`);
+        }
+      }
       await refresh();
-      if (res?.id) await api.document({ type: 'canteen', id: res.id, mode: 'preview' }).catch(notify.apiError);
     },
     onError: notify.apiError,
   });

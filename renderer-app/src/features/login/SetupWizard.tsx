@@ -39,9 +39,9 @@ export function setupRequired(info: AppInfo | undefined): boolean {
   return !info.serverUrl || !info.caImported;
 }
 
-const LABELS = ['مرحبًا', 'الخادم', 'الشهادة', 'الاعتماد', 'جاهز'];
+const LABELS = ['مرحبًا', 'الخادم', 'الشهادة', 'جاهز'];
 
-/** First-run wizard: welcome, server URL, CA certificate, device approval, done. */
+/** First-run wizard: welcome, server URL, CA certificate, done. */
 export function SetupWizard({ info, onDone }: { info: AppInfo; onDone: () => void }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
@@ -99,15 +99,6 @@ export function SetupWizard({ info, onDone }: { info: AppInfo; onDone: () => voi
       </Stack>
     </Stack>,
     <Stack spacing={2} key="3">
-      <Typography variant="h4">اعتماد هذا الجهاز</Typography>
-      <Typography>صدّر طلب الاعتماد وأرسله للجهة المالكة لإضافته إلى ترخيص الوحدة.</Typography>
-      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-        <Button variant="tonal" onClick={back}>رجوع</Button>
-        <Button variant="tonal" onClick={() => run(async () => { if (await unwrap(bridge().exportDevice())) notify.success('تم حفظ طلب الاعتماد'); })}>حفظ طلب الاعتماد</Button>
-        <Button variant="contained" onClick={next}>تخطي — لدي ترخيص</Button>
-      </Stack>
-    </Stack>,
-    <Stack spacing={2} key="4">
       <Typography variant="h4">اكتمل الإعداد</Typography>
       <Typography>سجّل الدخول باسم المستخدم وكلمة المرور التي يوفّرها مسؤول الخادم.</Typography>
       <Button variant="contained" onClick={finish}>الذهاب لتسجيل الدخول</Button>

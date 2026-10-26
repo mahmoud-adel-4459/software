@@ -1,3 +1,4 @@
+import { completeSoldierInput } from './soldier.fixture';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
@@ -62,13 +63,13 @@ test('signed API flow: device restriction, personal-data filtering, gate cycle, 
     phone: '01000000000',
     address: 'عنوان خاص',
   };
-  const forbidden = await send(gate, 'POST', '/api/soldiers', payload, gateToken, randomUUID());
+  const forbidden = await send(gate, 'POST', '/api/soldiers', completeSoldierInput(payload), gateToken, randomUUID());
   assert.equal(forbidden.status, 403, 'admin user on gate device must still be restricted');
   assert.equal((await send(gate, 'GET', '/api/admin/users', {}, gateToken)).status, 403);
   const createId = randomUUID();
-  const created = await send(internal, 'POST', '/api/soldiers', payload, adminToken, createId);
+  const created = await send(internal, 'POST', '/api/soldiers', completeSoldierInput(payload), adminToken, createId);
   assert.equal(created.status, 201, JSON.stringify(created.body));
-  const retried = await send(internal, 'POST', '/api/soldiers', payload, adminToken, createId);
+  const retried = await send(internal, 'POST', '/api/soldiers', completeSoldierInput(payload), adminToken, createId);
   assert.deepEqual(retried.body, created.body);
   const gateList = await send(gate, 'GET', '/api/soldiers', {}, gateToken);
   assert.equal(gateList.body.soldiers.length, 1);
@@ -80,11 +81,11 @@ test('signed API flow: device restriction, personal-data filtering, gate cycle, 
     payload.nationalId,
   );
   assert.equal(
-    (await send(internal, 'POST', '/api/soldiers', { ...payload, name: 'تغيير' }, adminToken, createId)).status,
+    (await send(internal, 'POST', '/api/soldiers', completeSoldierInput({ ...payload, name: 'تغيير' }), adminToken, createId)).status,
     409,
   );
   // Duplicate military number: unique violation maps to 409 and rolls back.
-  assert.equal((await send(internal, 'POST', '/api/soldiers', payload, adminToken, randomUUID())).status, 409);
+  assert.equal((await send(internal, 'POST', '/api/soldiers', completeSoldierInput(payload), adminToken, randomUUID())).status, 409);
   const movement = {
     kind: 'exit',
     soldierId: created.body.id,

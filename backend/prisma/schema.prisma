@@ -30,6 +30,7 @@ model User {
   fitness_records      FitnessRecord[]
   legacy_imports       LegacyImport[]
   visitor_visits       VisitorVisit[]
+  personnel_records    SoldierPersonnelRecord[]
 
   @@map("users")
 }
@@ -55,8 +56,31 @@ model Soldier {
   attachments          Attachment[]
   canteen_transactions CanteenTransaction[]
   fitness_records      FitnessRecord[]
+  personnel_records    SoldierPersonnelRecord[]
 
   @@map("soldiers")
+}
+
+model SoldierPersonnelRecord {
+  id          String   @id
+  soldier_id  String
+  category    String
+  title       String
+  record_date String
+  end_date    String?
+  reference   String   @default("")
+  details     String   @default("")
+  version     Int      @default(1)
+  deleted     Boolean  @default(false)
+  created_by  String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now())
+
+  soldier Soldier @relation(fields: [soldier_id], references: [id])
+  creator User    @relation(fields: [created_by], references: [id])
+
+  @@index([soldier_id, category, record_date], map: "personnel_soldier_category_date")
+  @@map("soldier_personnel_records")
 }
 
 model Permit {
@@ -261,6 +285,7 @@ model Visitor {
 
 model VisitorVisit {
   id          String    @id
+  card_no     Int?
   visitor_id  String
   purpose     String
   check_in    DateTime  @default(now())
@@ -277,6 +302,8 @@ model VisitorVisit {
   // Real index is PARTIAL: WHERE check_out IS NULL AND voided = 0 (see migration.sql).
   @@unique([visitor_id], map: "visitor_open_visit")
   @@index([check_in], map: "visitor_visits_check_in")
+  // Partial unique index: only an open, non-voided visit occupies a reusable card.
+  @@unique([card_no], map: "visitor_card_open_visit")
   @@map("visitor_visits")
 }
 

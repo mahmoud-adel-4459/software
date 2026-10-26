@@ -8,12 +8,16 @@ import {
   reverseHandler,
   transactionHandler,
   updateOutletHandler,
+  receiptPrintHandler,
+  receiptPrintFailedHandler,
 } from './canteen.controller';
 
 export const canteenRoutes = Router({ caseSensitive: true, strict: true });
 canteenRoutes.get('/api/canteen/transaction', transactionHandler);
 canteenRoutes.get('/api/canteen', ledgerHandler);
 canteenRoutes.post('/api/canteen', purchaseHandler);
+canteenRoutes.post('/api/canteen/receipt-print', receiptPrintHandler);
+canteenRoutes.post('/api/canteen/receipt-print/failed', receiptPrintFailedHandler);
 canteenRoutes.post('/api/canteen/reverse', reverseHandler);
 canteenRoutes.post('/api/outlets', createOutletHandler);
 canteenRoutes.post('/api/outlets/update', updateOutletHandler);

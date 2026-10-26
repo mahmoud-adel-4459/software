@@ -14,6 +14,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { VisitorCardPanel } from './VisitorCardPanel';
 import { api } from '@/api/endpoints';
 import type { GateMovementResult, Permit, Soldier } from '@/api/types';
 import { DetailList, KpiCard, SectionCard } from '@/components/basic';
@@ -27,11 +29,15 @@ import { gateProfileRows, parseGateScan, PHOTO_KINDS } from '@/lib/soldierProfil
 import { TIER_LABELS } from '@/lib/format';
 import { toneColors, tokens } from '@/theme/tokens';
 
-type Target = { kind: 'soldier'; militaryNo: string } | { kind: 'visitor'; id: string } | null;
+type Target = { kind: 'soldier'; militaryNo: string } | { kind: 'visitor'; id: string } | { kind: 'visitor-card'; cardNo: number } | null;
 
 /** Gate POS: large scan field (always focused), soldier/visitor panels and exit/entry forms. */
 export function GatePage() {
-  const [target, setTarget] = useState<Target>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedCard = Number(searchParams.get('card'));
+  const [target, setTarget] = useState<Target>(() => Number.isInteger(selectedCard) && selectedCard >= 1 && selectedCard <= 24
+    ? { kind: 'visitor-card', cardNo: selectedCard } : null);
+  const clearTarget = () => { setTarget(null); setSearchParams({}, { replace: true }); };
   const [lastPermit, setLastPermit] = useState<GateMovementResult | null>(null);
   const summary = useSummary();
   return (
@@ -52,6 +58,7 @@ export function GatePage() {
         </Alert>
       )}
       {!target && <ScanPanel onScan={setTarget} />}
+      {target?.kind === 'visitor-card' && <VisitorCardPanel key={target.cardNo} cardNo={target.cardNo} onClear={clearTarget} />}
       {target?.kind === 'soldier' && <SoldierPanel militaryNo={target.militaryNo} onClear={() => setTarget(null)} onPermit={setLastPermit} />}
       {target?.kind === 'visitor' && <VisitorPanel id={target.id} onClear={() => setTarget(null)} />}
     </Box>
@@ -256,6 +263,7 @@ function SoldierPanel({ militaryNo, onClear, onPermit }: { militaryNo: string; o
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, lg: 8 }}>
               <SectionCard title="سبب الخروج" subtitle="اختر بندًا واحدًا">
+                {catalog.data?.exitReasons.length === 0 && <Alert severity="warning">لا توجد أسباب خروج؛ أضف الأسباب من الإعدادات أولًا.</Alert>}
                 <Box role="radiogroup" aria-label="سبب الخروج" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 1 }}>
                   {(catalog.data?.exitReasons ?? []).map((r, i) => {
                     const on = reason === r;
@@ -275,7 +283,7 @@ function SoldierPanel({ militaryNo, onClear, onPermit }: { militaryNo: string; o
                 <Stack spacing={2}>
                   <TextField label="يوم العودة" type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} required />
                   <TextField label="وقت العودة" type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} required />
-                  <TextField label="ملاحظات" value={notes} onChange={(e) => setNotes(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
+                  <TextField label="ملاحظات" helperText="تفاصيل الجهة أو سبب الخروج — حتى 1000 حرف" multiline minRows={3} value={notes} onChange={(e) => setNotes(e.target.value)} slotProps={{ htmlInput: { maxLength: 1000 } }} />
                   <Button type="submit" variant="contained" size="large" startIcon={<ExitIcon />} loading={move.isPending}>تأكيد الخروج وإصدار الإذن</Button>
                 </Stack>
               </SectionCard>
@@ -291,7 +299,7 @@ function SoldierPanel({ militaryNo, onClear, onPermit }: { militaryNo: string; o
               </Stack>
             )}
             <Stack spacing={2} sx={{ maxWidth: 560 }}>
-              <TextField label="ملاحظات (اختياري)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <TextField label="ملاحظات (اختياري)" helperText="ملاحظات العودة لهذه الحركة — حتى 1000 حرف" multiline minRows={3} value={notes} onChange={(e) => setNotes(e.target.value)} slotProps={{ htmlInput: { maxLength: 1000 } }} />
               <Button type="submit" variant="contained" color="success" size="large" startIcon={<EnterIcon />} loading={move.isPending}>تسجيل العودة الآن</Button>
             </Stack>
           </SectionCard>

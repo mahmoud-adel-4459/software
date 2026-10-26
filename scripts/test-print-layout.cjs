@@ -91,15 +91,32 @@ function check(name, cond, detail) {
   if (!cond) failures.push(name);
 }
 
+async function checkVisitorCards() {
+  const numbers = Array.from({ length: 24 }, (_, i) => i + 1);
+  const qr = await Promise.all(numbers.map(no => QRCode.toDataURL(String(no))));
+  const settings = { labelWidthMm: 45, labelHeightMm: 50 };
+  const body = visitorLabels(numbers, qr, 1);
+  check('visitor cards contain no printed text', body.replace(/<[^>]*>/g, '') === '', 'unexpected text');
+  const r = await render({ html: documentHtml({ title: 't', body, settings, fontUrl: FONT, mode: 'label' }), mode: 'label', settings });
+  check('24 reusable cards: one page per card', r.pages === 24, `got ${r.pages}`);
+}
+
 async function main() {
+  if (process.env.PRINT_VISITOR_CARDS_ONLY === '1') return checkVisitorCards();
   const qrUrl = await QRCode.toDataURL('sample', { errorCorrectionLevel: 'L', width: 600, margin: 2 });
   const sizes = [
+    [45, 50],
+    [50, 45],
     [89, 102],
     [100, 100],
     [60, 40],
     [50, 30],
   ];
+  if (process.env.PRINT_LABEL_SIZE && !sizes.some(([w, h]) => process.env.PRINT_LABEL_SIZE === `${w}x${h}`)) {
+    throw new Error('PRINT_LABEL_SIZE must match a supported label size');
+  }
   for (const [w, h] of sizes) {
+    if (process.env.PRINT_LABEL_SIZE && process.env.PRINT_LABEL_SIZE !== `${w}x${h}`) continue;
     for (const count of [1, 2, 5]) {
       const settings = { labelWidthMm: w, labelHeightMm: h };
       const soldiers = Array.from({ length: count }, (_, i) => soldier(i));
@@ -116,6 +133,8 @@ async function main() {
       );
     }
   }
+  if (process.env.PRINT_LABEL_SIZE) return;
+  await checkVisitorCards();
   // Visitor labels with copies: 2 visitors x 2 copies = 4 pages.
   {
     const settings = { labelWidthMm: 89, labelHeightMm: 102 };

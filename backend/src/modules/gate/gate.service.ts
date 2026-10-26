@@ -54,6 +54,8 @@ export async function getPermit(ctx: Ctx) {
     expected_return: row.expected_return,
     returned_at: row.returned_at,
     voided: row.voided,
+    notes: row.notes,
+    entry_notes: row.entry_notes,
     ...row.soldier,
   };
 }

@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import Skeleton from '@mui/material/Skeleton';
@@ -16,10 +17,14 @@ import { PageHeader, SectionCard } from '@/components/basic';
 import { RhfText } from '@/components/Fields';
 import { notify } from '@/lib/notify';
 import { useCatalog } from '@/lib/queries';
-import { DATE_DETAIL_KEYS, DETAIL_FIELDS, NUMBER_DETAIL_KEYS, parseDetails } from '@/lib/soldierProfile';
+import { DATE_DETAIL_KEYS, DETAIL_FIELDS, NUMBER_DETAIL_KEYS, PHOTO_KINDS, parseDetails } from '@/lib/soldierProfile';
 import { PhotoSlots, useSavedPhotos, type PendingPhotos } from './shared';
 
-const detailShape = Object.fromEntries(Object.keys(DETAIL_FIELDS).map((k) => [k, z.string().optional()]));
+const detailShape = Object.fromEntries(Object.entries(DETAIL_FIELDS).map(([key, label]) => [key, z.string().trim().min(1, `${label} مطلوب`).max(['weaponNo', 'cardNo'].includes(key) ? 40 : 200).superRefine((value, ctx) => {
+  if (!value) return;
+  if (DATE_DETAIL_KEYS.includes(key) && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)) ctx.addIssue({ code: 'custom', message: 'أدخل تاريخًا صحيحًا' });
+  if (NUMBER_DETAIL_KEYS.includes(key) && !(Number(value) > 0 && Number(value) < (key === 'age' ? 120 : 1000) && (key !== 'age' || Number.isInteger(Number(value))))) ctx.addIssue({ code: 'custom', message: key === 'age' ? 'أدخل عمرًا صحيحًا من 1 إلى 119' : 'أدخل قياسًا موجبًا أقل من 1000' });
+})]));
 const schema = z.object({
   name: z.string().trim().min(1, 'الاسم مطلوب').max(200),
   militaryNo: z.string().trim().regex(/^\d{6,30}$/, 'الرقم العسكري من 6 إلى 30 رقمًا'),
@@ -27,8 +32,8 @@ const schema = z.object({
   rank: z.string().trim().min(1, 'الدرجة مطلوبة'),
   company: z.string().trim().min(1, 'السرية مطلوبة'),
   unit: z.string().trim().min(1, 'الوحدة مطلوبة'),
-  phone: z.string().optional(),
-  address: z.string().optional(),
+  phone: z.string().trim().min(1, 'رقم الهاتف مطلوب').max(30),
+  address: z.string().trim().min(1, 'العنوان المدني مطلوب').max(500),
   ...detailShape,
 });
 type Values = z.infer<typeof schema>;
@@ -49,6 +54,7 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
   const catalog = useCatalog();
   const saved = useSavedPhotos(attachments);
   const [pending, setPending] = useState<PendingPhotos>({});
+  const [missingPhotos, setMissingPhotos] = useState<AttachmentKind[]>([]);
   const requestId = useRef<{ key: string; id: string } | null>(null);
   const d = parseDetails(soldier?.details);
   const { control, handleSubmit, formState } = useForm<Values>({
@@ -65,14 +71,24 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
     try {
       const file = await unwrap(bridge().pickAttachment());
       if (!file) return;
-      if (!file.mime.startsWith('image/')) return notify.error('اختر PNG أو JPEG');
+      if (!['image/png', 'image/jpeg'].includes(file.mime)) return notify.error('اختر PNG أو JPEG');
+      const bytes = Math.floor(file.content.length * 3 / 4) - (file.content.endsWith('==') ? 2 : file.content.endsWith('=') ? 1 : 0);
+      if (bytes > 5 * 1024 * 1024) return notify.error('الصورة أكبر من 5 ميجابايت؛ اختر صورة أصغر');
       setPending((p) => ({ ...p, [kind]: file }));
+      setMissingPhotos((missing) => missing.filter((photoKind) => photoKind !== kind));
     } catch (e) {
       notify.apiError(e);
     }
   };
 
   const submit = handleSubmit(async (values) => {
+    const missing = PHOTO_KINDS.filter(([kind]) => !pending[kind] && !attachments?.some((attachment) => attachment.kind === kind)).map(([kind]) => kind);
+    setMissingPhotos(missing);
+    if (missing.length) {
+      notify.error('أضف الصور الأربع المطلوبة قبل حفظ العسكري');
+      document.querySelector<HTMLElement>('[data-photo-kind]')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     const details: Record<string, string> = {};
     for (const k of Object.keys(DETAIL_FIELDS)) {
       details[k] = String((values as Record<string, unknown>)[k] ?? '');
@@ -80,7 +96,8 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
     const { phone, address, ...core } = values;
     const body = {
       name: core.name, militaryNo: core.militaryNo, nationalId: core.nationalId, rank: core.rank, company: core.company, unit: core.unit,
-      phone: phone ?? '', address: address ?? '', details,
+      phone, address, details,
+      photos: Object.entries(pending).filter(([, file]) => Boolean(file)).map(([kind, file]) => ({ ...file, kind })),
       ...(soldier ? { id: soldier.id, version: soldier.version } : {}),
     };
     const key = JSON.stringify(body);
@@ -88,9 +105,6 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
     try {
       const result = await post<{ id: string }>(soldier ? '/api/soldier/update' : '/api/soldiers', body, requestId.current.id);
       const soldierId = soldier ? soldier.id : result.id;
-      for (const [kind, file] of Object.entries(pending)) {
-        if (file) await post('/api/attachments', { ...file, kind, soldierId }, crypto.randomUUID());
-      }
       requestId.current = null;
       await queryClient.invalidateQueries({ queryKey: ['soldiers'] });
       await queryClient.invalidateQueries({ queryKey: ['soldier', soldierId] });
@@ -103,24 +117,25 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
 
   return (
     <Box component="form" onSubmit={submit} noValidate>
-      <PageHeader title={soldier ? 'تعديل بيانات العسكري' : 'إضافة عسكري'} description="الحقول الإلزامية محددة؛ التفاصيل الإضافية اختيارية." />
+      <PageHeader title={soldier ? 'تعديل بيانات العسكري' : 'إضافة عسكري'} description="جميع البيانات والصور الأربع إلزامية. البيانات والصور تُحفظ معًا بعد اكتمال الملف." />
       <SectionCard title="البيانات الأساسية">
         <Grid container spacing={2}>
           {([['name', 'الاسم الرباعي'], ['militaryNo', 'الرقم العسكري'], ['nationalId', 'الرقم القومي'], ['rank', 'الدرجة'], ['company', 'السرية'], ['unit', 'الوحدة'], ['phone', 'رقم الهاتف'], ['address', 'العنوان المدني']] as const).map(([n, l]) => (
-            <Grid key={n} size={{ xs: 12, sm: 6, md: 4 }}><RhfText control={control} name={n} label={l} slotProps={{ htmlInput: { dir: n === 'militaryNo' || n === 'nationalId' || n === 'phone' ? 'ltr' : undefined } }} /></Grid>
+            <Grid key={n} size={{ xs: 12, sm: 6, md: 4 }}><RhfText required control={control} name={n} label={l} slotProps={{ htmlInput: { dir: n === 'militaryNo' || n === 'nationalId' || n === 'phone' ? 'ltr' : undefined } }} /></Grid>
           ))}
         </Grid>
       </SectionCard>
-      <SectionCard title="تفاصيل إضافية">
+      <SectionCard title="بيانات العسكري التفصيلية — مطلوبة">
         <Grid container spacing={2}>
           {Object.entries(DETAIL_FIELDS).map(([k, label]) => (
             <Grid key={k} size={{ xs: 12, sm: 6, md: 4 }}>
-              <RhfText control={control} name={k as keyof Values & string} label={label} type={DATE_DETAIL_KEYS.includes(k) ? 'date' : NUMBER_DETAIL_KEYS.includes(k) ? 'number' : 'text'} />
+              <RhfText required control={control} name={k as keyof Values & string} label={label} type={DATE_DETAIL_KEYS.includes(k) ? 'date' : NUMBER_DETAIL_KEYS.includes(k) ? 'number' : 'text'} />
             </Grid>
           ))}
         </Grid>
       </SectionCard>
-      <SectionCard title="صور العسكري" subtitle="PNG أو JPEG — تُرفع عند الحفظ أو لاحقًا من ملف العسكري.">
+      <SectionCard title="صور العسكري — مطلوبة" subtitle="صورة 4×6، البطاقة، وجه الكارنيه وظهره. PNG أو JPEG بحد أقصى 5 ميجابايت للصورة؛ الصور المحفوظة سابقًا لا تحتاج إعادة رفع.">
+        {missingPhotos.length > 0 && <Alert severity="error" sx={{ mb: 2 }}>الصور الناقصة: {PHOTO_KINDS.filter(([kind]) => missingPhotos.includes(kind)).map(([, label]) => label).join('، ')}</Alert>}
         <PhotoSlots saved={saved.data} pending={pending} onPick={pick} onClear={(k) => setPending((p) => { const n = { ...p }; delete n[k]; return n; })} />
       </SectionCard>
       <Stack direction="row" spacing={1}>

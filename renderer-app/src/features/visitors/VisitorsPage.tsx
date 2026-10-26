@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import BlockIcon from '@mui/icons-material/BlockOutlined';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import PersonAddIcon from '@mui/icons-material/PersonAddAltOutlined';
-import QrIcon from '@mui/icons-material/QrCode2Outlined';
 import RestoreIcon from '@mui/icons-material/RestoreOutlined';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -14,6 +13,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { api } from '@/api/endpoints';
@@ -30,6 +30,7 @@ import { useCatalog } from '@/lib/queries';
 import { useRef } from 'react';
 import { ExcelButtons } from '@/components/ExcelButtons';
 import { VISITOR_IMPORT, sheetWorkbook } from '@/lib/excel';
+import { VisitorCards } from './VisitorCards';
 
 const schema = z.object({
   name: z.string().trim().min(1, 'الاسم مطلوب'),
@@ -43,11 +44,11 @@ type Values = z.infer<typeof schema>;
 
 /** Visitors register: search, add/edit dialog, QR, disable/enable. */
 export function VisitorsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const catalog = useCatalog();
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Visitor | 'new' | null>(null);
-  const [qr, setQr] = useState<Visitor | null>(null);
   const list = useQuery({ queryKey: ['visitors', q], queryFn: () => api.visitors(q) });
   const toggle = async (v: Visitor) => {
     try {
@@ -67,24 +68,25 @@ export function VisitorsPage() {
     { field: 'disabled', headerName: 'الحالة', width: 110, renderCell: (c) => <ToneChip tone={c.row.disabled ? 'neutral' : 'success'} label={c.row.disabled ? 'معطل' : 'نشط'} /> },
     { field: 'id', headerName: '', width: 60, sortable: false, renderCell: (c) => <RowActions actions={[
       { label: 'تعديل', icon: EditIcon, onClick: () => setEditing(c.row) },
-      { label: 'QR الزائر', icon: QrIcon, onClick: () => setQr(c.row) },
       { label: c.row.disabled ? 'تفعيل' : 'تعطيل', icon: c.row.disabled ? RestoreIcon : BlockIcon, danger: !c.row.disabled, onClick: () => void toggle(c.row) },
     ]} /> },
   ];
   return (
     <>
-      <PageHeader title="الزوار" description="إضافة زوار بفئات (عادي، خاص، إداري) وطباعة QR للبوابة." actions={<>
+      <PageHeader title="الزوار" description="بطاقات الدخول وسجل الزوار المسجّلين من البوابة." actions={<>
         <ExcelButtons build={() => sheetWorkbook('الزوار', 'الزوار', [{ header: 'الاسم', key: 'name', width: 30 }, { header: 'البطاقة', key: 'badge_no' }, { header: 'الفئة', key: 'category' }, { header: 'الجهة', key: 'organization' }, { header: 'الهاتف', key: 'phone' }, { header: 'الحالة', key: 'state' }],
           (list.data ?? []).map((v) => ({ name: v.name, badge_no: v.badge_no, category: `${v.category_name} · ${TIER_LABELS[v.category_tier]}`, organization: v.organization, phone: v.phone, state: v.disabled ? 'معطل' : 'نشط' })))} importSpec={VISITOR_IMPORT} />
-        <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setEditing('new')}>زائر جديد</Button>
+        <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => navigate('/gate')}>تسجيل زيارة من البوابة</Button>
       </>} />
-      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}><SearchField value={q} onChange={setQ} placeholder="الاسم أو البطاقة أو الجهة" /></Paper>
+      <VisitorCards />
       <Paper variant="outlined">
-        <DataTable rows={list.data ?? []} columns={columns} loading={list.isFetching} emptyText={q ? 'لا توجد نتائج' : 'لا يوجد زوار'} emptyHint="أضف زائرًا جديدًا أو غيّر البحث." />
+        <Stack sx={{ p: 2 }} spacing={1}>
+          <Typography component="h2" variant="h5">سجل الزوار</Typography>
+          <SearchField value={q} onChange={setQ} placeholder="الاسم أو البطاقة أو الجهة" />
+        </Stack>
+        <DataTable rows={list.data ?? []} columns={columns} loading={list.isFetching} emptyText={q ? 'لا توجد نتائج' : 'لا يوجد زوار'} emptyHint="امسح بطاقة زائر في البوابة لتسجيل أول زيارة." />
       </Paper>
-      <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>امسح QR الزائر في البوابة لتسجيل «جاي ليه» ثم الدخول أو الخروج. فئات الزوار من الإعدادات.</Typography>
       {editing && <VisitorDialog visitor={editing === 'new' ? null : editing} categories={(catalog.data?.visitorCategories ?? []).filter((c) => !c.disabled)} onClose={() => setEditing(null)} />}
-      <VisitorQr visitor={qr} onClose={() => setQr(null)} />
     </>
   );
 }

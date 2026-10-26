@@ -27,7 +27,7 @@ function copyTlsFromBundle(tlsDir) {
       return;
     }
   }
-  throw new Error('شهادات TLS غير موجودة. شغّل npm.cmd run lab:setup مرة واحدة على جهاز التطوير، أو استخدم Demo-Lab.');
+  require('./local-tls.cjs').createLocalTls(tlsDir);
 }
 
 function ensureStandalone(userDataDir, opts = {}) {

@@ -6,6 +6,26 @@ import { renderApp } from './harness';
 
 const SOLDIER_ID = '11111111-1111-4111-8111-111111111111';
 
+describe('canteen scanner', () => {
+  it('selects a soldier using scanner Enter, accepts legacy QR, and clears a stale selection on editing', async () => {
+    const fake = await renderApp('/canteen', { role: 'clerk' });
+    const scanButton = await screen.findByRole('button', { name: 'اسكان كود العسكري' });
+    await userEvent.click(scanButton);
+    const input = screen.getByRole('textbox', { name: 'الرقم العسكري' });
+    expect(input).toHaveFocus();
+    await userEvent.type(input, '123456789{Enter}');
+    expect(await screen.findByText(/جندي \/ أحمد محمود علي حسن/)).toBeInTheDocument();
+    await userEvent.click(scanButton);
+    expect(screen.queryByText(/جندي \/ أحمد محمود علي حسن/)).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { value: '{"mn":"123456789"}' } });
+    await userEvent.type(input, '{Enter}');
+    expect(await screen.findByText(/جندي \/ أحمد محمود علي حسن/)).toBeInTheDocument();
+    await userEvent.type(input, '0');
+    expect(screen.queryByText(/جندي \/ أحمد محمود علي حسن/)).not.toBeInTheDocument();
+    expect(fake.calls.some((call) => call.path.includes('/api/soldiers'))).toBe(true);
+  });
+});
+
 describe('QR flows', () => {
   it('soldier list: preview calls desktop.qr(id) and shows a big crisp image', async () => {
     const fake = await renderApp('/soldiers');
@@ -18,6 +38,9 @@ describe('QR flows', () => {
     expect(qr).toHaveBeenCalledWith(SOLDIER_ID);
     expect(img.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
     expect(img).toHaveStyle({ width: '300px', imageRendering: 'pixelated' });
+    expect(within(dialog).queryByText('أحمد محمود علي حسن')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('بطاقة عسكري')).not.toBeInTheDocument();
+    expect(within(dialog).getAllByRole('button', { name: 'طباعة' })).toHaveLength(1);
     await userEvent.click(within(dialog).getAllByRole('button', { name: 'طباعة' })[0]);
     await waitFor(() => expect(fake.documents[0]).toMatchObject({ type: 'qr', ids: [SOLDIER_ID], copies: 1, mode: 'print' }));
   });
@@ -31,24 +54,14 @@ describe('QR flows', () => {
     expect(await screen.findByText('تعذر إنشاء QR')).toBeInTheDocument();
   });
 
-  it('visitors: QR preview prints through the label printer via desktop.document (no window.print)', async () => {
+  it('visitors: fixed card preview uses the label document channel', async () => {
     const fake = await renderApp('/visitors');
-    const qrVisitor = vi.spyOn(fake, 'qrVisitor');
     const print = vi.fn();
     window.print = print;
-    await screen.findByText('زائر تجريبي');
-    await userEvent.click((await screen.findAllByRole('button', { name: 'إجراءات' }))[0]);
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'QR الزائر' }));
-    const dialog = await screen.findByRole('dialog');
-    await within(dialog).findByAltText('QR');
-    expect(qrVisitor).toHaveBeenCalledWith('v1');
-    expect(await within(dialog).findByTestId('label-printer-note')).toHaveTextContent('89×102');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'طباعة' }));
+    await screen.findByText('بطاقات الزوار من 1 إلى 24');
+    await userEvent.click(screen.getByRole('button', { name: 'معاينة' }));
     await waitFor(() => expect(fake.documents).toHaveLength(1));
-    expect(fake.documents[0]).toEqual({ type: 'visitor-qr', ids: ['v1'], copies: 1, mode: 'print' });
-    await userEvent.click(within(dialog).getByRole('button', { name: 'معاينة' }));
-    await waitFor(() => expect(fake.documents).toHaveLength(2));
-    expect(fake.documents[1]).toMatchObject({ type: 'visitor-qr', mode: 'preview' });
+    expect(fake.documents[0]).toMatchObject({ type: 'visitor-cards', cardNos: Array.from({ length: 24 }, (_, i) => i + 1), mode: 'preview' });
     expect(print).not.toHaveBeenCalled();
   });
 
@@ -123,7 +136,7 @@ describe('Excel header mapping', () => {
     expect(m.unknownHeaders).toEqual(['عمود غريب']);
     expect(m.missingRequired).toEqual([]);
     const s = mapImportRows({ fileName: 'x', headers: ['name'], rows: [{ name: 'a' }] }, SOLDIER_IMPORT);
-    expect(s.missingRequired.map((f) => f.key)).toEqual(['militaryNo']);
+    expect(s.missingRequired.map((f) => f.key)).toEqual(SOLDIER_IMPORT.fields.filter((f) => f.key !== 'name').map((f) => f.key));
   });
   it('chunks to <=1000 rows with a request id per chunk and offsets error rows', async () => {
     expect(chunk(Array.from({ length: 2500 }, (_, i) => i)).map((c) => c.length)).toEqual([1000, 1000, 500]);

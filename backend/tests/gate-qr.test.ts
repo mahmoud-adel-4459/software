@@ -1,3 +1,4 @@
+import { completeSoldierInput } from './soldier.fixture';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
@@ -19,14 +20,14 @@ test('QR -> gate scan -> exit/entry is stored in gate log, permits, audit and re
   const { send, internal, gate, backend, api } = app;
   const prisma = backend.store.prisma;
 
-  const soldier = await api('POST', '/api/soldiers', {
+  const soldier = await api('POST', '/api/soldiers', completeSoldierInput({
     name: 'أحمد بوابة',
     militaryNo: '000012345',
     nationalId: '30101010101011',
     rank: 'جندي',
     company: 'الأولى',
     unit: 'وحدة',
-  });
+  }));
   await api('POST', '/api/admin/users', {
     username: 'gateuser01',
     name: 'عامل بوابة',

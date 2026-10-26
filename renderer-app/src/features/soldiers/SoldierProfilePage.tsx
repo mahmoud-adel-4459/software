@@ -20,6 +20,7 @@ import { notify } from '@/lib/notify';
 import { ATTACHMENT_LABELS, gateProfileRows } from '@/lib/soldierProfile';
 import { PhotoSlots, SoldierQrDialog, useSavedPhotos, type PendingPhotos } from './shared';
 import type { AttachmentMeta } from '@/api/types';
+import { PersonnelRecords } from './PersonnelRecords';
 
 /** Soldier file: details, QR, photos, documents and archive. */
 export function SoldierProfilePage() {
@@ -116,6 +117,7 @@ export function SoldierProfilePage() {
           </SectionCard>
         </Grid>
       </Grid>
+      <PersonnelRecords key={soldier.id} soldierId={soldier.id} archived={soldier.archived} />
       <SectionCard title="صور العسكري" subtitle="PNG أو JPEG">
         <PhotoSlots saved={saved.data} pending={pending} onPick={pick} onClear={(k) => setPending((p) => { const n = { ...p }; delete n[k]; return n; })} />
         <Stack direction="row" sx={{ mt: 2 }}>

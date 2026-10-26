@@ -94,7 +94,7 @@ async function main() {
     getEmbeddedServer: () => embeddedServer,
   });
   registerExcelChannels({ expose, dialog, getWindow });
-  const { api } = registerSessionChannels({ expose, connection });
+  const { api } = registerSessionChannels({ expose, connection, onSignedIn: () => outputs?.warmup() });
   outputs = registerOutput({
     expose,
     app,
@@ -106,17 +106,32 @@ async function main() {
   });
 
   Menu.setApplicationMenu(null);
+  let shuttingDown = false;
+  const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    outputs.close();
+    try {
+      if (embeddedServer) await embeddedServer.shutdown();
+    } catch (error) {
+      console.error('Shutdown failed:', error.message);
+    } finally {
+      app.quit();
+    }
+  };
+  app.on('before-quit', (event) => {
+    if (!shuttingDown) { event.preventDefault(); void shutdown(); }
+  });
+  app.on('window-all-closed', () => { void shutdown(); });
   win = createMainWindow();
+  win.on('closed', () => { win = null; void shutdown(); });
   await win.loadFile(entryPath);
   if (mode.isSmokeTest()) await runSmokeTest(app, win);
 
   app.on('second-instance', () => {
+    if (!win || win.isDestroyed()) return;
     if (win.isMinimized()) win.restore();
     win.focus();
-  });
-  app.on('window-all-closed', async () => {
-    if (embeddedServer) await embeddedServer.shutdown();
-    app.quit();
   });
 }
 

@@ -20,7 +20,7 @@ import { apiRoutes } from '@/routes';
 export interface AppDeps {
   store: Store;
   database: Database;
-  licenseProvider: LicenseProvider;
+  licenseProvider?: LicenseProvider;
   backupManager?: BackupManager | undefined;
   clock?: () => number;
 }

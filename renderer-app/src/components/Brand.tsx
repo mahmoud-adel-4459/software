@@ -1,8 +1,7 @@
 import Box from '@mui/material/Box';
 import { LOGO_SRC } from '@/lib/brand';
-import { tokens } from '@/theme/tokens';
 
-/** The official emblem as a circular mark (the file has square corners, so it is clipped round). */
+/** Preserve the full shield and wings on the image's transparent square. */
 export function BrandMark({ size = 44, glow }: { size?: number; glow?: boolean }) {
   return (
     <Box
@@ -10,7 +9,7 @@ export function BrandMark({ size = 44, glow }: { size?: number; glow?: boolean }
       src={LOGO_SRC}
       alt="شعار منظومة شؤون الوحدة الداخلية"
       draggable={false}
-      sx={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, boxShadow: glow ? tokens.shadow.goldGlow : undefined, border: `1px solid ${tokens.gold}` }}
+      sx={{ width: size, height: size, objectFit: 'contain', flexShrink: 0, filter: glow ? 'drop-shadow(0 0 12px rgba(255,255,255,.2))' : undefined }}
     />
   );
 }

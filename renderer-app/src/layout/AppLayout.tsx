@@ -27,6 +27,7 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { ROLE_LABELS } from '@/lib/format';
 import { tokens } from '@/theme/tokens';
 import { Logo, SIDEBAR_COLLAPSED, SIDEBAR_WIDTH, SidebarContent } from './Sidebar';
+import { NavigationBackButton } from './NavigationBackButton';
 
 const COLLAPSE_KEY = 'ma.sidebar.collapsed';
 function readCollapsed(): boolean {
@@ -94,6 +95,7 @@ export function AppLayout() {
           <IconButton aria-label="طي القائمة" onClick={wide ? toggle : () => setDrawer(true)} sx={{ border: `1px solid ${tokens.border}`, bgcolor: tokens.surface, boxShadow: tokens.shadow.sm }}>
             <MenuIcon />
           </IconButton>
+          <NavigationBackButton session={session} />
           {!wide && <Logo collapsed />}
           <Stack direction="row" spacing={0.5} aria-label="مسار الصفحة" sx={{ alignItems: 'center', flex: 1, minWidth: 0, color: tokens.textSecondary }}>
             <Typography variant="body2" noWrap>منظومة شؤون الوحدة الداخلية</Typography>

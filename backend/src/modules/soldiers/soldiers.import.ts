@@ -4,7 +4,8 @@ import type { Ctx } from '@/common/http/types';
 import { cell, eachRow, importRows } from '@/common/utils/bulk';
 import { DETAIL_FIELD_KEYS } from '@/common/utils/catalog';
 import type { Tx } from '@/config/prisma';
-import { newSoldierInput } from './soldiers.validator';
+import { newSoldierInput, soldierPhotos, requireSoldierPhotos } from './soldiers.validator';
+import { addAttachment } from './attachments.service';
 
 const FIELDS = ['name', 'militaryNo', 'nationalId', 'rank', 'company', 'unit', 'phone', 'address'];
 
@@ -17,8 +18,10 @@ export async function importSoldiers(tx: Tx, ctx: Ctx) {
     const data: Record<string, unknown> = Object.fromEntries(FIELDS.map((k) => [k, cell(row, k)]));
     data.details = Object.fromEntries(DETAIL_FIELD_KEYS.map((k) => [k, cell(row, k)]));
     const soldier = newSoldierInput(data);
+    const photos = soldierPhotos(row.photos);
+    requireSoldierPhotos(photos.map((photo) => photo.kind as string));
     requireValue(!known.has(soldier.militaryNo), 'الرقم العسكري مسجل مسبقًا');
-    await tx.soldier.create({
+    const created = await tx.soldier.create({
       data: {
         id: randomUUID(),
         military_no: soldier.militaryNo,
@@ -33,6 +36,7 @@ export async function importSoldiers(tx: Tx, ctx: Ctx) {
         created_at: store.now(),
       },
     });
+    for (const photo of photos) await addAttachment(tx, { ...photo, soldierId: created.id });
     known.add(soldier.militaryNo);
   });
   await store.audit(tx, actor, 'soldiers.import', ctx.requestId as string);

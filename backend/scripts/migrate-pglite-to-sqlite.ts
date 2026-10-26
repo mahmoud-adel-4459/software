@@ -14,6 +14,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { applyMigrations } from '@/config/migrator';
 import { openRaw } from '@/config/prisma';
 import { COLUMNS, writeTablesToSqlite, type Row } from '@/modules/backup/backup.snapshot';
+import { upgradeCopiedSource } from './upgrade-pglite-source';
 
 export interface ReconciliationLine {
   check: string;
@@ -158,8 +159,7 @@ export async function migratePglite(options: {
   try {
     const version = (await pg.query('SELECT MAX(version) AS v FROM schema_migrations')).rows[0] as { v: number };
     log(`Source schema version: ${version.v}`);
-    if (Number(version.v) < 8)
-      throw new Error(`Source schema version ${version.v} is too old; start the old app once to upgrade it`);
+    await upgradeCopiedSource(pg, Number(version.v));
     const tables = await readSource(pg);
 
     const raw = openRaw(working);

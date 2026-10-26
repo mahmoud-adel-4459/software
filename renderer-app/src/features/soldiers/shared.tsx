@@ -7,7 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/endpoints';
 import type { AttachmentKind, AttachmentMeta, PickedFile } from '@/api/types';
 import { QrDialog } from '@/components/QrDialog';
-import { DocButtons } from '@/components/DocButtons';
 import { PHOTO_KINDS } from '@/lib/soldierProfile';
 import { tokens } from '@/theme/tokens';
 
@@ -18,17 +17,9 @@ export function SoldierQrDialog({ soldier, onClose }: { soldier: { id: string; n
       open={Boolean(soldier)}
       onClose={onClose}
       heading="باركود البوابة (QR)"
-      name={soldier?.name}
-      subtitle={soldier?.military_no}
       queryKey={['qr', soldier?.id]}
       load={() => api.qr(soldier!.id)}
       labelDoc={soldier ? { type: 'qr', ids: [soldier.id], copies: 1 } : undefined}
-      actions={soldier && (
-        <Stack spacing={1}>
-          <Typography variant="caption">بطاقة عسكري</Typography>
-          <DocButtons doc={{ type: 'card', ids: [soldier.id], copies: 1 }} />
-        </Stack>
-      )}
     />
   );
 }

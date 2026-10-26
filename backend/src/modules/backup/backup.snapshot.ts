@@ -203,7 +203,7 @@ export function verifySqlite(db: BetterSqlite3.Database): void {
 /** Row counts per application table of a SQLite database. */
 export function countTables(db: BetterSqlite3.Database): Record<string, number> {
   return Object.fromEntries(
-    Object.keys(COLUMNS).map((table) => [
+    [...Object.keys(COLUMNS), 'soldier_personnel_records'].map((table) => [
       table,
       (db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get() as { n: number }).n,
     ]),

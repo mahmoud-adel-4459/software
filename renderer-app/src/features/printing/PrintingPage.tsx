@@ -10,7 +10,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import { DataGrid, type GridRowSelectionModel } from '@mui/x-data-grid';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { api } from '@/api/endpoints';
 import type { Soldier, Visitor } from '@/api/types';
 import { PageHeader, SectionCard } from '@/components/basic';
@@ -27,7 +27,8 @@ const TYPES = [{ value: 'qr', label: 'ملصق QR (بوابة)' }, { value: 'car
 async function run(type: string, ids: string[], copies: number, mode: Mode) {
   if (ids.length > 100) return notify.error('الحد الأقصى 100 عسكري في الطلب الواحد');
   try {
-    await api.document({ type, ids, copies, mode });
+    const completed = await api.document({ type, ids, copies, mode });
+    if (!completed) return;
     if (mode === 'print') notify.success('تم إرسال الطباعة');
     if (mode === 'pdf') notify.success('تم حفظ PDF');
   } catch (e) {
@@ -36,12 +37,21 @@ async function run(type: string, ids: string[], copies: number, mode: Mode) {
 }
 const clampCopies = (v: string) => Math.max(1, Math.min(8, Number(v) || 1));
 
-function ModeButtons({ onMode, disabled }: { onMode: (m: Mode) => void; disabled?: boolean }) {
+function ModeButtons({ onMode, disabled }: { onMode: (m: Mode) => void | Promise<unknown>; disabled?: boolean }) {
+  const pending = useRef(false);
+  const [busy, setBusy] = useState<Mode | null>(null);
+  const submit = async (mode: Mode) => {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(mode);
+    try { await onMode(mode); }
+    finally { pending.current = false; setBusy(null); }
+  };
   return (
     <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-      <Button variant="contained" startIcon={<PrintIcon />} disabled={disabled} onClick={() => onMode('print')}>طباعة المختار</Button>
-      <Button variant="tonal" startIcon={<PreviewIcon />} disabled={disabled} onClick={() => onMode('preview')}>معاينة</Button>
-      <Button variant="tonal" startIcon={<PdfIcon />} disabled={disabled} onClick={() => onMode('pdf')}>PDF</Button>
+      <Button variant="contained" startIcon={<PrintIcon />} loading={busy === 'print'} disabled={disabled || (busy !== null && busy !== 'print')} onClick={() => submit('print')}>طباعة المختار</Button>
+      <Button variant="tonal" startIcon={<PreviewIcon />} loading={busy === 'preview'} disabled={disabled || (busy !== null && busy !== 'preview')} onClick={() => submit('preview')}>معاينة</Button>
+      <Button variant="tonal" startIcon={<PdfIcon />} loading={busy === 'pdf'} disabled={disabled || (busy !== null && busy !== 'pdf')} onClick={() => submit('pdf')}>PDF</Button>
     </Stack>
   );
 }

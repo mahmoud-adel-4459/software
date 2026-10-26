@@ -13,7 +13,7 @@ import type { AppInfo } from '@/api/types';
 import { notify } from '@/lib/notify';
 import { tokens } from '@/theme/tokens';
 
-/** Server connection settings: machine id, server URL, device approval request, CA import. */
+/** Server connection settings: server URL and CA import. */
 export function ConnectionPanel({ info }: { info: AppInfo }) {
   const queryClient = useQueryClient();
   const [url, setUrl] = useState(info.serverUrl ?? '');
@@ -30,22 +30,6 @@ export function ConnectionPanel({ info }: { info: AppInfo }) {
       notify.apiError(e);
     } finally {
       setSaving(false);
-    }
-  };
-  const copyMachineId = async () => {
-    try {
-      if (bridge().copyText) await unwrap(bridge().copyText(info.machineId));
-      else await navigator.clipboard.writeText(info.machineId);
-      notify.success('تم نسخ رقم تعريف الكمبيوتر');
-    } catch (e) {
-      notify.apiError(e);
-    }
-  };
-  const exportDevice = async () => {
-    try {
-      if (await unwrap(bridge().exportDevice())) notify.success('تم حفظ طلب الاعتماد؛ أرسله إلى الجهة المالكة');
-    } catch (e) {
-      notify.apiError(e);
     }
   };
   const importCa = async () => {
@@ -69,26 +53,18 @@ export function ConnectionPanel({ info }: { info: AppInfo }) {
   return (
     <Accordion defaultExpanded={!info.serverUrl} sx={{ mt: 2, borderRadius: `${tokens.radius}px !important`, '&:before': { display: 'none' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography sx={{ fontWeight: 700 }}>إعداد اتصال الخادم واعتماد الجهاز</Typography>
+        <Typography sx={{ fontWeight: 700 }}>إعداد اتصال الخادم</Typography>
       </AccordionSummary>
       <AccordionDetails>
         <Stack spacing={2}>
-          <Stack direction="row" spacing={1}>
-            <TextField label="رقم تعريف الكمبيوتر (للتفعيل)" value={info.machineId} slotProps={{ input: { readOnly: true } }} />
-            <Button variant="tonal" onClick={copyMachineId}>نسخ</Button>
-          </Stack>
           {info.standaloneMode && info.loginHintPath && (
             <Typography variant="caption">كلمة مرور المسؤول المحلي: ملف login.txt داخل مجلد standalone في بيانات التطبيق.</Typography>
           )}
-          <Typography variant="body2" color="text.secondary">
-            قبل الدخول (وضع الشبكة) أرسل طلب اعتماد هذا الجهاز إلى الجهة المالكة لإضافته إلى ترخيص المنشأة.
-          </Typography>
           <Stack direction="row" spacing={1}>
             <TextField label="عنوان الخادم الآمن" type="url" value={url} onChange={(e) => setUrl(e.target.value)} slotProps={{ htmlInput: { dir: 'ltr' } }} />
             <Button variant="contained" loading={saving} onClick={saveUrl} sx={{ whiteSpace: 'nowrap' }}>حفظ العنوان</Button>
           </Stack>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-            <Button variant="tonal" onClick={exportDevice}>حفظ طلب اعتماد الجهاز</Button>
             <Button variant="tonal" onClick={importCa}>استيراد شهادة الشبكة الداخلية</Button>
           </Stack>
           <Typography variant="caption">

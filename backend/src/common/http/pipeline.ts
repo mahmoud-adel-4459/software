@@ -1,7 +1,7 @@
 import type { IncomingHttpHeaders } from 'node:http';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { AppError, requireValue } from '@/common/errors/AppError';
-import { requestMessage, verify } from '@/common/utils/crypto';
+import { fingerprint, requestMessage, verify } from '@/common/utils/crypto';
 import { isUuid } from '@/common/utils/validation';
 import type { Store } from '@/common/store/Store';
 import type { Actor, Ctx, CtxBase, Device, Input, License, LicenseProvider } from './types';
@@ -12,6 +12,9 @@ const MAX_CLOCK_SKEW_MS = 60 * 1000;
 const DEFAULT_BODY_MB = 8;
 /** Routes that accept large uploads (everything else is capped at 8 MB). */
 const BODY_LIMITS_MB: Record<string, number> = {
+  'POST /api/soldiers': 32,
+  'POST /api/soldier/update': 32,
+  'POST /api/soldiers/import': 48,
   'POST /api/backup/import': 48,
   'POST /api/import/preview': 48,
   'POST /api/import/apply': 48,
@@ -20,7 +23,7 @@ const BODY_LIMITS_MB: Record<string, number> = {
 export interface PipelineDeps {
   store: Store;
   sessions: SessionStore;
-  licenseProvider: LicenseProvider;
+  licenseProvider?: LicenseProvider;
   clock: () => number;
   restoring: () => boolean;
   track: (res: Response) => void;
@@ -91,9 +94,15 @@ export const deviceAuth =
   (req, res, next) => {
     requireValue(['GET', 'POST'].includes(req.method), 'طريقة غير مسموحة', 405);
     deps.sessions.prune();
-    const license = deps.licenseProvider();
+    const license = deps.licenseProvider?.() ?? { installation: 'شؤون الأفراد', devices: [] };
     const deviceId = header(req.headers, 'x-device-id');
-    const device = license.devices.find((d) => d.id === deviceId);
+    let device = license.devices.find((d) => d.id === deviceId);
+    if (!deps.licenseProvider) {
+      requireValue(isUuid(deviceId), 'هوية الجهاز غير صالحة', 401);
+      const encodedKey = header(req.headers, 'x-device-key');
+      requireValue(encodedKey && encodedKey.length < 2048, 'مفتاح الجهاز مطلوب', 401);
+      device = { id: deviceId, kind: 'internal', publicKey: Buffer.from(encodedKey, 'base64').toString('utf8') };
+    }
     requireValue(device, 'هذا الجهاز غير معتمد؛ تواصل مع الجهة المالكة', 403);
     const timestamp = header(req.headers, 'x-timestamp');
     const nonce = header(req.headers, 'x-nonce');
@@ -120,7 +129,9 @@ export const deviceAuth =
       401,
     );
     // Only a correctly signed request may occupy a nonce slot.
-    deps.sessions.useNonce(device.id, nonce);
+    // Bind sessions to the verified key, preventing reuse with a copied device id.
+    const sessionDeviceId = deps.licenseProvider ? device.id : fingerprint(device.publicKey);
+    deps.sessions.useNonce(sessionDeviceId, nonce);
     let data: unknown = {};
     try {
       data = rawBody ? JSON.parse(rawBody) : {};
@@ -128,7 +139,7 @@ export const deviceAuth =
       requireValue(false, 'صيغة الطلب غير صحيحة');
     }
     requireValue(data && typeof data === 'object' && !Array.isArray(data), 'الطلب غير صالح');
-    Object.assign(res.locals, { license, device, deviceId: device.id, data });
+    Object.assign(res.locals, { license, device, deviceId: sessionDeviceId, data });
     next();
   };
 
@@ -148,6 +159,7 @@ export const sessionAuth =
         requireValue(session, 'انتهت الجلسة؛ سجل الدخول', 401);
         const user = await deps.store.userById(session.userId);
         requireValue(user && user.auth_version === session.authVersion, 'الحساب معطل أو تغير؛ سجل الدخول', 401);
+        if (!deps.licenseProvider) l.device.kind = user.role === 'gate' ? 'gate' : 'internal';
         actor = { user, deviceId: l.deviceId, kind: l.device.kind };
         l.session = session;
       }

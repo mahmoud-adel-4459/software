@@ -19,7 +19,7 @@ export async function login(ctx: Ctx) {
   return {
     token,
     user: { name: user.name, username: user.username, role: user.role },
-    kind: device.kind,
+    kind: user.role === 'gate' ? 'gate' : device.kind,
     installation: license.installation,
   };
 }

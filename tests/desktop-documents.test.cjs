@@ -38,7 +38,7 @@ test('printed documents escape HTML and honor paper size and QR label page', () 
   assert.match(html, /110mm/);
   const label = documentHtml({ title: 't', body: '', settings: {}, fontUrl: 'file:///f.woff2', mode: 'label' });
   assert.match(label, /@page\{size:89mm 102mm;margin:0\}/);
-  assert.match(label, /\.label:last-child\{break-after:auto/);
+  assert.match(label, /\.label\+\.label\{break-before:page/);
   assert.equal(label.includes('<header>'), false);
   const small = documentHtml({
     title: 't',
@@ -51,6 +51,17 @@ test('printed documents escape HTML and honor paper size and QR label page', () 
   assert.throws(() => documentHtml({ title: 't', body: '', settings: { paper: 'A3' } }));
 });
 
+test('45x50 label prints only QR even when office branding is enabled', () => {
+  const body = cards([{ name: 'أحمد', military_no: '000012345', rank: 'جندي', company: 'الأولى', unit: 'الوحدة' }], ['data:image/png;base64,AA=='], 1, true);
+  const html = documentHtml({ title: 'ملصق', body, settings: { labelWidthMm: 45, labelHeightMm: 50, showLogo: true, logo: 'data:image/png;base64,LOGO' }, fontUrl: 'f', mode: 'label' });
+  assert.match(html, /@page\{size:45mm 50mm;margin:0\}/);
+  assert.equal(html.includes('000012345'), false);
+  assert.equal(body.replace(/<[^>]*>/g, ''), '');
+  assert.equal(body, '<div class="label"><img src="data:image/png;base64,AA==" alt="QR"></div>');
+  assert.equal((html.match(/<img /g) || []).length, 1);
+  assert.equal(html.includes('base64,LOGO'), false);
+});
+
 test('print geometry picks mode, printer and Electron options per document kind', () => {
   const g = require('../desktop/documents/geometry.cjs');
   assert.deepEqual(['qr', 'visitor-qr', 'voucher', 'canteen', 'card', 'report'].map(g.modeOf), [
@@ -59,7 +70,7 @@ test('print geometry picks mode, printer and Electron options per document kind'
     'receipt',
     'receipt',
     'office',
-    'office',
+    'memo',
   ]);
   const settings = {
     printer: 'Office',
@@ -74,6 +85,10 @@ test('print geometry picks mode, printer and Electron options per document kind'
   assert.equal(label.silent, true);
   assert.equal(label.deviceName, 'XP-246B');
   assert.equal(label.margins.marginType, 'none');
+  assert.equal(label.scaleFactor, 100);
+  assert.equal(label.pagesPerSheet, 1);
+  assert.equal(label.duplexMode, 'simplex');
+  assert.equal(label.copies, 1);
   assert.equal(g.printOptions(g.pageSpec('receipt', settings, 100), settings).deviceName, 'Office');
   assert.equal(
     g.printOptions(g.pageSpec('office', { ...settings, silentPrint: false }), { ...settings, silentPrint: false })
@@ -83,11 +98,31 @@ test('print geometry picks mode, printer and Electron options per document kind'
   assert.equal(g.printOptions(g.pageSpec('label', {}), {}).silent, false);
   assert.equal(
     g.printOptions(g.pageSpec('label', { labelPrinter: 'XP' }), { labelPrinter: 'XP' }).silent,
-    false,
-    'dialog by default',
+    true,
+    'labels go directly to the selected printer',
   );
   assert.equal(g.receiptHeightMm(10), 40);
   assert.equal(g.receiptHeightMm(1000), Math.ceil((1000 * 25.4) / 96) + 1);
+});
+
+test('A4 reports use the detailed memo furniture and reserve space for signatures', () => {
+  const geometry = require('../desktop/documents/geometry.cjs');
+  const spec = geometry.pageSpec('memo', { paper: 'A5' });
+  assert.equal(spec.paper, 'A4');
+  assert.equal(geometry.modeOf('daily-report'), 'memo');
+  assert.equal(geometry.printOptions(spec).margins.marginType, 'none');
+  const html = documentHtml({ title: 'تقرير', body: '<table><tr><td>بيانات</td></tr></table>', mode: 'memo', settings: { memoRightName: '<script>', memoLeftName: 'القائد', memoLogo: 'data:image/png;base64,TEST' }, fontUrl: 'file:///font' });
+  assert.match(html, /مذكرة تفصيلية/);
+  assert.match(html, /@page\{size:A4 portrait;margin:0\}/);
+  assert.match(html, /\.memo-footer\{position:absolute;/);
+  assert.equal(html.includes('position:fixed'), false);
+  assert.equal((html.match(/<footer class="memo-footer">/g) || []).length, 1);
+  assert.match(html, /memo-watermark/);
+  assert.match(html, /memo-signature right/);
+  assert.match(html, /memo-signature left/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.equal(html.includes('<script>'), false);
+  assert.equal((html.match(/src="data:image\/png;base64,TEST"/g) || []).length, 2);
 });
 
 test('receipt config: defaults, clamping, content box, height modes, copies', () => {
@@ -118,6 +153,11 @@ test('receipt config: defaults, clamping, content box, height modes, copies', ()
 test('receipt html: thermal css, content box, footer, bold, no table/colors', () => {
   const { documentHtml, voucher, canteenReceipt, testReceipt } = require('../desktop/documents.cjs');
   const settings = { receiptWidthMm: 80, receiptPrintableWidthMm: 72, receiptMarginMm: 3, receiptFontPt: 12, receiptBold: false, receiptFooter: 'شكرًا لكم', receiptShowLogo: false, unitName: 'وحدة' };
+  const receiptData = { name: 'اختبار', at: new Date().toISOString(), amount_cents: 500 };
+  assert.match(canteenReceipt(receiptData, 'admin', 1), /أصل الإيصال/);
+  assert.match(canteenReceipt(receiptData, 'admin', 2), /نسخة رقم 1/);
+  assert.match(canteenReceipt(receiptData, 'admin', 3), /نسخة رقم 2/);
+  assert.doesNotMatch(canteenReceipt(receiptData), /نسخة رقم|أصل الإيصال/);
   const html = documentHtml({ title: 't', body: canteenReceipt({ rank: 'جندي', name: 'أ', military_no: '1', company: 'ب', at: new Date().toISOString(), amount_cents: 1250, outlet_name: 'ك' }), settings, fontUrl: 'f', mode: 'receipt' });
   assert.match(html, /#receipt\{width:66mm;margin:0 auto;overflow-wrap:anywhere/);
   assert.match(html, /font-size:12pt/);

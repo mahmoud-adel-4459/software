@@ -92,7 +92,8 @@ export function ImportDialog({ spec, data, onClose }: { spec: ImportSpec; data: 
   const [progress, setProgress] = useState<[number, number] | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const fields = spec.fields.filter((f) => mapped.matched.includes(f.key));
-  const blocked = mapped.missingRequired.length > 0 || mapped.rows.length === 0;
+  const missingSoldierPhotos = spec.path === '/api/soldiers/import' && mapped.rows.some((row) => !Array.isArray(row.photos) || row.photos.length !== 4);
+  const blocked = mapped.missingRequired.length > 0 || mapped.rows.length === 0 || missingSoldierPhotos;
   const submit = async () => {
     setProgress([0, mapped.rows.length]);
     try {
@@ -146,6 +147,7 @@ export function ImportDialog({ spec, data, onClose }: { spec: ImportSpec; data: 
             {mapped.unknownHeaders.length > 0 && <ToneChip tone="warning" label={`أعمدة متجاهلة: ${mapped.unknownHeaders.join('، ')}`} icon={false} />}
           </Stack>
           {mapped.missingRequired.length > 0 && <Alert severity="error">أعمدة مطلوبة غير موجودة: {mapped.missingRequired.map((f) => f.header).join('، ')}</Alert>}
+          {missingSoldierPhotos && <Alert severity="warning">صور العسكري الأربع إلزامية؛ جدول البيانات وحده لا يكفي لإنشاء ملف عسكري. استخدم «إضافة عسكري» لإدخال البيانات والصور وحفظ الملف كاملًا.</Alert>}
           {mapped.rows.length === 0 && mapped.missingRequired.length === 0 && <Alert severity="warning">الملف لا يحتوي على صفوف.</Alert>}
           <div style={{ overflowX: 'auto' }}>
             <Table size="small" aria-label="معاينة الصفوف">

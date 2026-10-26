@@ -1,10 +1,12 @@
 import type { Ctx } from '@/common/http/types';
 import { isAdmin } from '@/common/http/access';
 import { listOutlets, listVisitorCategories } from '@/common/store/lookups';
-import { EXIT_REASONS, FITNESS_TYPES } from '@/common/utils/catalog';
+import { FITNESS_TYPES } from '@/common/utils/catalog';
+import { exitReasonsOf } from '@/modules/settings/exit-reasons';
 import { catalogForClient } from '@/common/utils/reports';
 import { mergeBackupPolicy } from '@/modules/backup/backup.policy';
 import { mergePrintSettings } from '@/modules/settings/print.settings';
+import { memoFields } from '@/modules/settings/memo.settings';
 
 interface SettingsData {
   unitName: string;
@@ -14,6 +16,7 @@ interface SettingsData {
   paper: string;
   margins: string;
   extraReasons: string[];
+  exitReasons?: string[];
 }
 
 /** Everything the UI needs after login: lists, report types and (role-dependent) settings. */
@@ -31,9 +34,10 @@ export async function catalog({ store, actor }: Ctx) {
     paper: settings.paper,
     margins: settings.margins,
     ...mergePrintSettings(settings),
+    ...memoFields(settings),
   };
   return {
-    exitReasons: [...EXIT_REASONS, ...settings.extraReasons],
+    exitReasons: exitReasonsOf(settings),
     fitnessTypes: FITNESS_TYPES,
     reports: catalogForClient(actor.user.role),
     outlets: {

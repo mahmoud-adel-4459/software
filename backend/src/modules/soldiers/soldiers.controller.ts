@@ -2,7 +2,8 @@ import { requireClerkOrAdmin } from '@/common/http/access';
 import { handle, write } from '@/common/http/route';
 import { archiveSoldier, getSoldier, listSoldiers, updateSoldier } from './soldiers.service';
 import { importSoldiers } from './soldiers.import';
-import { newSoldierInput } from './soldiers.validator';
+import { newSoldierInput, soldierPhotos, requireSoldierPhotos } from './soldiers.validator';
+import { addAttachment } from './attachments.service';
 
 /** Gate stations may search soldiers; internal PCs only for admin/clerk accounts. */
 export const listSoldiersHandler = handle((actor) => {
@@ -14,9 +15,18 @@ export const getSoldierHandler = handle('clerkOrAdmin', getSoldier);
 export const createSoldierHandler = write({
   path: '/api/soldiers',
   access: 'admin',
-  prepare: (ctx) => newSoldierInput(ctx.data),
+  prepare: (ctx) => {
+    const soldier = newSoldierInput(ctx.data);
+    const photos = soldierPhotos(ctx.data.photos);
+    requireSoldierPhotos(photos.map((photo) => photo.kind as string));
+    return { ...soldier, photos };
+  },
   audit: false, // store.createSoldier writes its own 'soldier.create' audit row.
-  execute: (tx, soldier, { store, actor }) => store.createSoldier(tx, actor, soldier),
+  execute: async (tx, soldier, { store, actor }) => {
+    const row = await store.createSoldier(tx, actor, soldier);
+    for (const photo of soldier.photos) await addAttachment(tx, { ...photo, soldierId: row.id });
+    return row;
+  },
 });
 
 export const updateSoldierHandler = write({

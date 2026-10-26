@@ -1,3 +1,4 @@
+import { completeSoldierInput } from './soldier.fixture';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -61,7 +62,7 @@ test('SQLite engine: modules, privacy, corrections, encrypted backups and atomic
   const prisma = () => backend.store.prisma;
   const gateToken = await app.login(gate, 'admin', ADMIN_PASSWORD);
   const api = app.api;
-  const s = await api('POST', '/api/soldiers', {
+  const s = await api('POST', '/api/soldiers', completeSoldierInput({
     name: 'اختبار',
     militaryNo: '000012345',
     nationalId: '30101010101011',
@@ -69,7 +70,7 @@ test('SQLite engine: modules, privacy, corrections, encrypted backups and atomic
     company: 'الأولى',
     unit: 'اختبار',
     details: { height: '175' },
-  });
+  }));
   assert.equal(s.details.height, '175');
   const updated = await api('POST', '/api/soldier/update', {
     id: s.id,
@@ -82,7 +83,7 @@ test('SQLite engine: modules, privacy, corrections, encrypted backups and atomic
     unit: s.unit,
     phone: '01000000000',
     address: 'سري',
-    details: { height: '176' },
+    details: { ...s.details, height: '176' },
   });
   assert.equal(updated.version, 2);
   assert.equal(
@@ -149,7 +150,7 @@ test('SQLite engine: modules, privacy, corrections, encrypted backups and atomic
   // print settings: defaults, validation, round trip
   assert.deepEqual(
     [catalog.settings.labelWidthMm, catalog.settings.labelHeightMm, catalog.settings.receiptWidthMm, catalog.settings.silentPrint],
-    [89, 102, 80, false],
+    [45, 50, 80, false],
   );
   const cur = (await api('GET', '/api/catalog')).settings;
   assert.deepEqual(
@@ -266,7 +267,7 @@ test('SQLite engine: modules, privacy, corrections, encrypted backups and atomic
   const backup = await api('POST', '/api/backup/create');
   const preview = await api('GET', `/api/backup/preview?id=${backup.id}`);
   assert.equal(preview.format, 'sqlite-1');
-  assert.equal(preview.counts.attachments, 4);
+  assert.equal(preview.counts.attachments, 6);
   const envelope = await api('GET', `/api/backup/download?id=${backup.id}`);
   assert.equal(envelope.format, 'sqlite-1');
   assert.equal(JSON.stringify(envelope).includes('30101010101011'), false);
@@ -314,7 +315,7 @@ test('SQLite engine: modules, privacy, corrections, encrypted backups and atomic
       .catch(() => null),
     null,
   ); // replaced photo
-  assert.equal(await prisma().attachment.count(), 4);
+  assert.equal(await prisma().attachment.count(), 6);
   assert.ok(fs.existsSync(backend.backupManager!.filename(restored.safetyId)));
   // The safety copy holds the pre-restore data (999 extra cents).
   const safety = await api('GET', `/api/backup/preview?id=${restored.safetyId}`);
@@ -344,7 +345,7 @@ test('SQLite engine: modules, privacy, corrections, encrypted backups and atomic
   const imported = await api('POST', '/api/backup/import', legacyEnvelope);
   const importedPreview = await api('GET', `/api/backup/preview?id=${imported.id}`);
   assert.equal(importedPreview.counts.soldiers, 1);
-  assert.equal(importedPreview.counts.attachments, 4);
+  assert.equal(importedPreview.counts.attachments, 6);
   assert.equal(importedPreview.counts.permits, 2);
   await api('POST', '/api/canteen', { soldierId: s.id, amountCents: 77, notes: 'قبل الاستعادة القديمة' });
   await api('POST', '/api/backup/restore', { id: imported.id, confirm: 'RESTORE', password: ADMIN_PASSWORD });

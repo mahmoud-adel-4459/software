@@ -35,9 +35,8 @@ function stylesheet({ paper, margins }) {
 const round = (n) => Math.round(n * 100) / 100;
 
 /**
- * Label sheet CSS. Page = W x H exactly; each label box is slightly smaller (W-1 x H-1.5 mm, top
- * margin 0.5mm, so it ends 1mm above the page bottom) so rounding never spills onto a second page.
- * Every label breaks after itself except the last one (no trailing blank sticker).
+ * Label sheet CSS. Each box leaves 1.5mm below the content for driver rounding.
+ * Only subsequent labels start a new page, avoiding trailing blank stickers.
  */
 function labelStylesheet(widthMm, heightMm) {
   const short = Math.min(widthMm, heightMm);
@@ -46,27 +45,16 @@ function labelStylesheet(widthMm, heightMm) {
   const pad = round(Math.max(1, short * 0.03));
   const innerW = boxW - 2 * pad;
   const innerH = boxH - 2 * pad;
-  const row = widthMm / heightMm >= 1.4;
-  const nameFs = round(Math.min(6, Math.max(2.4, short * 0.07)));
-  const noFs = round(nameFs * 1.15);
-  const subFs = round(Math.max(1.9, nameFs * 0.72));
-  // Column layout: text under the QR; row layout (wide labels): text beside the QR.
-  const textH = round(nameFs * 2.5 + noFs * 1.3 + subFs * 2.6);
-  const qr = row ? Math.min(innerH, innerW * 0.55) : Math.min(innerW, innerH - textH);
-  const qrSize = round(Math.max(qr, Math.min(short * 0.6, innerW, innerH)));
+  const qrSize = round(Math.max(1, Math.min(innerW, innerH)));
   return [
     `@page{size:${widthMm}mm ${heightMm}mm;margin:0}`,
     '*{box-sizing:border-box}',
     `html,body{width:${widthMm}mm;margin:0;padding:0;overflow:hidden;background:#fff;color:#000}`,
     'body{font-family:Plex,Arial,sans-serif}',
     'header{display:none}',
-    `.label{display:flex;flex-direction:${row ? 'row' : 'column'};align-items:center;justify-content:center;gap:${round(short * 0.02)}mm;width:${boxW}mm;height:${boxH}mm;margin:0.5mm auto 0;padding:${pad}mm;overflow:hidden;break-inside:avoid;break-after:page;page-break-after:always}`,
-    '.label:last-child{break-after:auto;page-break-after:auto}',
+    `.label{display:flex;align-items:center;justify-content:center;width:${boxW}mm;height:${boxH}mm;margin:0 auto;padding:${pad}mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid}`,
+    '.label+.label{break-before:page;page-break-before:always}',
     `.label img{flex:none;width:${qrSize}mm;height:${qrSize}mm;image-rendering:pixelated}`,
-    `.label-text{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;flex:${row ? '1 1 0' : 'none'};max-width:100%;text-align:center;gap:${round(subFs * 0.2)}mm}`,
-    `.label strong{font-size:${nameFs}mm;line-height:1.2;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}`,
-    `.label-no{font-size:${noFs}mm;font-weight:700;line-height:1.2;letter-spacing:0.05em;font-family:Consolas,monospace}`,
-    `.label-rank,.label-unit{font-size:${subFs}mm;line-height:1.2;color:#222;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}`,
   ].join('');
 }
 
@@ -144,6 +132,7 @@ function letterhead(settings, title) {
 
 /** Full printable HTML page. `mode`: 'office' (A4/A5 + letterhead), 'label' (no letterhead), 'receipt' (compact). */
 function documentHtml({ title, body, settings = {}, fontUrl, mode = 'office', calibration = false }) {
+  if (mode === 'memo') return require('./memo.cjs').memoDocument({ title, body, settings, fontUrl, defaultLogo: DEFAULT_LOGO });
   const paper = settings.paper || 'A4';
   if (!PAPER_SIZES.includes(paper)) throw new Error('مقاس ورق غير صالح');
   let css;

@@ -5,7 +5,8 @@ import { useAuth } from '@/auth/AuthContext';
 /** Lists, report types, outlets and settings needed by most pages (role-dependent). */
 export function useCatalog() {
   const { session } = useAuth();
-  return useQuery({ queryKey: ['catalog'], queryFn: api.catalog, enabled: Boolean(session), staleTime: 60_000 });
+  return useQuery({ queryKey: ['catalog'], queryFn: api.catalog, enabled: Boolean(session), staleTime: 0,
+    refetchOnMount: 'always', refetchOnWindowFocus: true, refetchInterval: 10_000 });
 }
 
 /** Gate summary (outside / late), refreshed every 10 seconds. */

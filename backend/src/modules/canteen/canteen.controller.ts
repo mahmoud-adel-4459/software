@@ -8,10 +8,21 @@ import {
   monthlyLedger,
   reversePurchase,
   updateOutlet,
+  reserveReceiptPrint,
+  failReceiptPrint,
 } from './canteen.service';
 
 export const transactionHandler = handle('clerkOrAdmin', getTransaction);
 export const ledgerHandler = handle('clerkOrAdmin', monthlyLedger);
+
+export const receiptPrintHandler = write({
+  path: '/api/canteen/receipt-print', access: 'clerkOrAdmin', audit: false,
+  execute: (tx, _input, ctx) => reserveReceiptPrint(tx, ctx.data, ctx),
+});
+export const receiptPrintFailedHandler = write({
+  path: '/api/canteen/receipt-print/failed', access: 'clerkOrAdmin', audit: false,
+  execute: (tx, _input, ctx) => failReceiptPrint(tx, ctx.data, ctx),
+});
 
 export const purchaseHandler = write({
   path: '/api/canteen',

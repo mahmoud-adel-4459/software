@@ -11,8 +11,6 @@ const required = (name: string) =>
 const schema = z.object({
   DATABASE_FILE: required('DATABASE_FILE'),
   SERVER_ID: required('SERVER_ID'),
-  LICENSE_PUBLIC_KEY: required('LICENSE_PUBLIC_KEY'),
-  LICENSE_FILE: required('LICENSE_FILE'),
   TLS_CERT: required('TLS_CERT'),
   TLS_KEY: required('TLS_KEY'),
   PORT: z.coerce.number().int().min(1).max(65535).default(8443),

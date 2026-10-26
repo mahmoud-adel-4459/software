@@ -8,6 +8,36 @@ import { PGlite } from '@electric-sql/pglite';
 import { hashPassword } from '@/common/utils/crypto';
 import { migratePglite } from '../scripts/migrate-pglite-to-sqlite';
 import { ADMIN_PASSWORD, createTestApp } from './helpers';
+import { openRaw } from '@/config/prisma';
+
+test('schema 4 upgrades only the migration copy and preserves existing people and money', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mil-migrate-v4-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const source = path.join(root, 'pg');
+  const target = path.join(root, 'app.db');
+  const schema = fs.readFileSync(path.join(__dirname, 'fixtures', 'pg-schema.sql'), 'utf8');
+  const pg = await PGlite.create(source);
+  await pg.exec(schema.slice(0, schema.indexOf('ALTER TABLE attachments DROP CONSTRAINT')));
+  const userId = randomUUID();
+  const soldierId = randomUUID();
+  await pg.query('INSERT INTO users(id,username,name,password_hash,role) VALUES($1,$2,$3,$4,$5)',
+    [userId, 'admin', 'Original admin', await hashPassword(ADMIN_PASSWORD), 'admin']);
+  await pg.query(`INSERT INTO soldiers(id,military_no,national_id,name,rank,company,unit)
+    VALUES($1,'000123456','30101010101011','Original soldier','Private','Company','Unit')`, [soldierId]);
+  await pg.query(`INSERT INTO canteen_transactions(id,soldier_id,amount_cents,created_by) VALUES($1,$2,1250,$3)`,
+    [randomUUID(), soldierId, userId]);
+  await pg.close();
+  const before = treeSignature(source);
+  const result = await migratePglite({ source, target });
+  assert.equal(result.ok, true);
+  assert.equal(treeSignature(source), before);
+  const raw = openRaw(target);
+  try {
+    assert.equal((raw.prepare('SELECT name FROM soldiers').get() as { name: string }).name, 'Original soldier');
+    assert.equal((raw.prepare('SELECT SUM(amount_cents) AS total FROM canteen_transactions').get() as { total: number }).total, 1250);
+    assert.equal((raw.prepare('SELECT COUNT(*) AS n FROM visitor_categories').get() as { n: number }).n, 3);
+  } finally { raw.close(); }
+});
 
 /** Hash of every file name + size + mtime: proves the source directory was not touched. */
 function treeSignature(dir: string): string {

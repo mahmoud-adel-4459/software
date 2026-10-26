@@ -3,7 +3,7 @@
  * Used by `npm run dev` (browser, no Electron) and by the vitest suites. Never bundled into production.
  */
 import type {
-  AppInfo, BackupItem, BridgeResult, Catalog, DashboardData, ExcelImportFile, ExcelWorkbookArg, Outlet, DesktopBridge, GateMovementResult, Permit, Role, DeviceKind, Session, Soldier, Visitor,
+  AppInfo, BackupItem, BridgeResult, Catalog, DashboardData, ExcelImportFile, ExcelWorkbookArg, Outlet, DesktopBridge, GateMovementResult, Permit, Role, DeviceKind, Session, Soldier, Visitor, VisitorCard, PersonnelRecord,
 } from '@/api/types';
 
 export interface FakeCall { method: string; path: string; data?: unknown; requestId?: string }
@@ -70,7 +70,7 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
   const savedSettings: Record<string, unknown> = {};
   const catalog = () => {
     const c = createCatalog(role, outlets);
-    return { ...c, settings: { ...c.settings, ...savedSettings } as Catalog['settings'] };
+    return { ...c, exitReasons: (savedSettings.exitReasons as string[] | undefined) ?? c.exitReasons, settings: { ...c.settings, ...savedSettings } as Catalog['settings'] };
   };
   const state = {
     soldiers: structuredClone(SOLDIER_FIXTURES),
@@ -78,6 +78,8 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
     visitors: [{ id: 'v1', name: 'زائر تجريبي', badge_no: 'V-0001', phone: '0100', organization: 'شركة', disabled: false, category_name: 'زائر عادي', category_tier: 'normal' as const }] as Visitor[],
     backups: [{ id: `${uuid()}.mab`, createdAt: '2026-10-20T09:00:00.000Z', size: 245760 }] as BackupItem[],
   };
+  const visitorCards: VisitorCard[] = Array.from({ length: 24 }, (_, i) => ({ cardNo: i + 1, openVisit: null }));
+  const personnelRecords: PersonnelRecord[] = [];
   const fake: FakeDesktop = {
     calls: [], documents: [], testPrints: [], excelFiles: [], nextImport: null, outlets, state, failures: { ...(options.failures ?? {}) },
     info: async () => ok<AppInfo>({ deviceId: 'dev-1', fingerprint: 'ab:cd', machineId: 'MACHINE-001', serverUrl: 'https://127.0.0.1:8443', caImported: true, version: '0.3.0', labMode: true, standaloneMode: false, playMode: false, loginHintPath: null, ...options.info }),
@@ -129,6 +131,9 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
             const s = state.soldiers.find((x) => x.military_no === params.get('militaryNo'));
             return s ? ok({ soldier: s, photos: [{ id: 'att-1', kind: 'photo', mime: 'image/png' }] }) : fail('لا يوجد عسكري بهذا الرقم', 404);
           }
+          case '/api/visitor-cards': return ok({ cards: visitorCards });
+          case '/api/soldier/records': return ok({ records: personnelRecords.filter(r => r.soldier_id === params.get('soldierId')) });
+          case '/api/gate/visitor-card': return ok(visitorCards.find(c => c.cardNo === Number(params.get('cardNo'))));
           case '/api/gate/visitor': return ok({ visitor: { ...state.visitors[0], category_id: 'c1', category_disabled: false }, openVisit: null });
           case '/api/attachment': return ok({ id: 'att-1', mime: 'image/png', content: PNG });
           case '/api/visitors': return ok({ visitors: state.visitors });
@@ -144,6 +149,35 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
         }
       }
       switch (route) {
+        case '/api/soldier/records': {
+          const index = personnelRecords.findIndex(r => r.id === body.id);
+          const row: PersonnelRecord = { id: index < 0 ? uuid() : String(body.id), soldier_id: String(body.soldierId),
+            category: body.category as PersonnelRecord['category'], title: String(body.title), record_date: String(body.recordDate),
+            end_date: body.endDate ? String(body.endDate) : null, reference: String(body.reference || ''), details: String(body.details || ''),
+            version: index < 0 ? 1 : personnelRecords[index].version + 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+          if (index < 0) personnelRecords.push(row); else personnelRecords[index] = row;
+          return ok(row);
+        }
+        case '/api/soldier/records/delete': {
+          const index = personnelRecords.findIndex(r => r.id === body.id && r.soldier_id === body.soldierId);
+          if (index < 0) return fail('Not found', 404);
+          personnelRecords.splice(index, 1);
+          return ok({ id: body.id });
+        }
+        case '/api/gate/visitor-card': {
+          const d = data as { cardNo: number; action: string; visitId?: string; name: string; nationalId: string; phone: string; organization: string; notes: string; purpose: string };
+          const card = visitorCards.find(c => c.cardNo === d.cardNo)!;
+          if (d.action === 'in') {
+            if (card.openVisit) return fail('البطاقة مستخدمة', 409);
+            card.openVisit = { id: uuid(), purpose: d.purpose, check_in: new Date().toISOString(), visitor: {
+              name: d.name, national_id: d.nationalId, phone: d.phone, organization: d.organization, notes: d.notes, category: { name: 'زائر عادي' },
+            } };
+          } else {
+            if (!card.openVisit || card.openVisit.id !== d.visitId) return fail('تغيرت الزيارة', 409);
+            card.openVisit = null;
+          }
+          return ok({ cardNo: card.cardNo });
+        }
         case '/api/soldiers': {
           const s: Soldier = { id: uuid(), military_no: String(body.militaryNo), name: String(body.name), rank: String(body.rank), company: String(body.company), unit: String(body.unit), status: 'in', version: 1, national_id: String(body.nationalId), archived: false, details: body.details as Soldier['details'] };
           state.soldiers.push(s);

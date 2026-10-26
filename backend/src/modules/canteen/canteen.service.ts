@@ -12,6 +12,35 @@ const OUTLET_KINDS = ['canteen', 'buffet'];
 const OUTLET_LABEL: Record<string, string> = { buffet: 'بوفيه', canteen: 'كانتين' };
 const OUTLET_FIELDS = { id: true, kind: true, name: true, disabled: true, sort_order: true } as const;
 
+const RECEIPT_ACTION = 'canteen.receipt.print.';
+
+/** Reserve a durable copy number inside the idempotent write transaction. */
+export async function reserveReceiptPrint(tx: Tx, data: Input, { actor, store }: Ctx) {
+  const id = identifier(data.id);
+  requireValue(await tx.canteenTransaction.findUnique({ where: { id }, select: { id: true } }), 'عملية غير موجودة', 404);
+  const previous = await tx.auditLog.findMany({
+    where: { entity_id: id, action: { startsWith: RECEIPT_ACTION } }, select: { action: true },
+  });
+  const printNumber = previous.reduce((max, row) => Math.max(max, Number(row.action.slice(RECEIPT_ACTION.length)) || 0), 0) + 1;
+  const reservationId = randomUUID();
+  await tx.auditLog.create({ data: {
+    id: reservationId, entity_id: id, action: `${RECEIPT_ACTION}${printNumber}`,
+    user_id: actor.user.id, device_id: actor.deviceId, at: store.now(),
+  } });
+  return { id, reservationId, printNumber };
+}
+
+/** Keep the failure in the audit trail; an unsuccessful final reservation does not consume a copy. */
+export async function failReceiptPrint(tx: Tx, data: Input, { actor }: Ctx) {
+  const id = identifier(data.id);
+  const reservationId = identifier(data.reservationId);
+  await tx.auditLog.updateMany({
+    where: { id: reservationId, entity_id: id, user_id: actor.user.id, device_id: actor.deviceId, action: { startsWith: RECEIPT_ACTION } },
+    data: { action: 'canteen.receipt.failed' },
+  });
+  return { id };
+}
+
 export async function getTransaction(ctx: Ctx) {
   const id = identifier(param(ctx, 'id'));
   const t = await ctx.store.prisma.canteenTransaction.findUnique({

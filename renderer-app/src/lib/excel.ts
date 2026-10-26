@@ -121,11 +121,11 @@ export const SOLDIER_IMPORT: ImportSpec = {
   fields: [
     f('name', 'الاسم', 'أحمد محمود علي حسن', true), f('militaryNo', 'الرقم العسكري', '123456789', true), f('nationalId', 'الرقم القومي', '29901011234567'),
     f('rank', 'الرتبة', 'جندي'), f('company', 'السرية', 'السرية الأولى'), f('unit', 'الوحدة', 'الوحدة التجريبية'), f('phone', 'الهاتف', '01000000000'),
-    f('address', 'العنوان', 'القاهرة'), f('cardNo', 'رقم الكارنيه', '5521'), f('originalUnit', 'الوحدة الأصلية', ''), f('specialty', 'التخصص', 'مشاة'),
-    f('enlistDate', 'تاريخ التجنيد', '2024-01-01'), f('dischargeDate', 'تاريخ التسريح', '2025-01-01'), f('weaponNo', 'رقم السلاح', ''),
+    f('address', 'العنوان', 'القاهرة'), f('cardNo', 'رقم الكارنيه', '5521'), f('originalUnit', 'الوحدة الأصلية', 'الوحدة الأصلية'), f('specialty', 'التخصص', 'مشاة'),
+    f('enlistDate', 'تاريخ التجنيد', '2024-01-01'), f('dischargeDate', 'تاريخ التسريح', '2027-01-01'), f('weaponNo', 'رقم السلاح', '12345'),
     f('unitJoinDate', 'تاريخ الالتحاق بالوحدة', '2024-02-01'), f('birthDate', 'تاريخ الميلاد', '2000-01-01'), f('height', 'الطول', 175),
-    f('weight', 'الوزن', 70), f('age', 'السن', 24), f('offDutyJob', 'الوظيفة المدنية', ''),
-  ],
+    f('weight', 'الوزن', 70), f('age', 'السن', 26), f('offDutyJob', 'الوظيفة المدنية', 'طالب'),
+  ].map((field) => ({ ...field, required: true })),
 };
 export const VISITOR_IMPORT: ImportSpec = {
   path: '/api/visitors/import', title: 'الزوار', fileName: 'الزوار',

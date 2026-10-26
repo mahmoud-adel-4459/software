@@ -9,6 +9,9 @@
 const MODE_BY_KIND = {
   qr: 'label',
   'visitor-qr': 'label',
+  'visitor-cards': 'label',
+  report: 'memo',
+  'daily-report': 'memo',
   voucher: 'receipt',
   canteen: 'receipt',
 };
@@ -93,6 +96,7 @@ async function measureReceiptHeight(webContents, settings = {}) {
 
 /** Page spec: label/receipt have widthMm x heightMm; office has paper + margins. */
 function pageSpec(mode, settings = {}, receiptMm) {
+  if (mode === 'memo') return { mode: 'memo', paper: 'A4', margins: 'none' };
   if (mode === 'label') {
     const { widthMm, heightMm } = labelSize(settings);
     return { mode, widthMm, heightMm };
@@ -107,28 +111,34 @@ function pageSpec(mode, settings = {}, receiptMm) {
 function printOptions(spec, settings = {}) {
   const deviceName = printerFor(spec.mode, settings);
   const base = {
-    silent: settings.silentPrint === true && Boolean(deviceName),
+    silent: Boolean(deviceName) && (spec.mode === 'label' || settings.silentPrint === true),
     printBackground: true,
     landscape: false,
     deviceName,
   };
-  if (spec.mode === 'office') {
+  if (spec.mode === 'office' || spec.mode === 'memo') {
     return {
       ...base,
       pageSize: spec.paper,
-      margins: { marginType: spec.margins === 'narrow' ? 'minimum' : 'default' },
+      margins: spec.mode === 'memo'
+        ? { marginType: 'none' }
+        : { marginType: spec.margins === 'narrow' ? 'minimum' : 'default' },
     };
   }
   return {
     ...base,
     pageSize: { width: microns(spec.widthMm), height: microns(spec.heightMm) },
     margins: { marginType: 'none' },
+    scaleFactor: 100,
+    pagesPerSheet: 1,
+    duplexMode: 'simplex',
+    copies: 1,
   };
 }
 
 /** Options for webContents.printToPDF() with the same geometry as `printOptions`. */
 function pdfOptions(spec) {
-  if (spec.mode === 'office') return { printBackground: true, preferCSSPageSize: true };
+  if (spec.mode === 'office' || spec.mode === 'memo') return { printBackground: true, preferCSSPageSize: true };
   const inches = (mm) => microns(mm) / 25400;
   return {
     printBackground: true,

@@ -3,7 +3,7 @@ import PreviewIcon from '@mui/icons-material/VisibilityOutlined';
 import PrintIcon from '@mui/icons-material/PrintOutlined';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { api } from '@/api/endpoints';
 import type { DocumentArg } from '@/api/types';
 import { notify } from '@/lib/notify';
@@ -18,15 +18,20 @@ const MODES: { mode: Mode; label: string; icon: typeof PrintIcon; variant: 'tona
 /** Preview / print / PDF buttons for a document (voucher, receipt, statement, report, daily report). */
 export function DocButtons({ doc, size = 'small', modes }: { doc: Omit<DocumentArg, 'mode'>; size?: 'small' | 'medium'; modes?: Mode[] }) {
   const [busy, setBusy] = useState<Mode | null>(null);
+  const pending = useRef(false);
   const run = async (mode: Mode) => {
+    if (pending.current) return;
+    pending.current = true;
     setBusy(mode);
     try {
-      await api.document({ ...doc, mode });
+      const completed = await api.document({ ...doc, mode });
+      if (!completed) return;
       if (mode === 'print') notify.success('تم إرسال الطباعة');
       if (mode === 'pdf') notify.success('تم حفظ PDF');
     } catch (e) {
       notify.apiError(e);
     } finally {
+      pending.current = false;
       setBusy(null);
     }
   };

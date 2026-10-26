@@ -5,6 +5,7 @@ const { pathToFileURL } = require('node:url');
 const QRCode = require('qrcode');
 const { buildQrPayload, buildVisitorQrPayload } = require('../shared/soldier-profile.cjs');
 const geometry = require('./documents/geometry.cjs');
+const { createPrinterHealthCache, validatePrinter, sendPrintJob } = require('./print-job.cjs');
 const {
   csv,
   reportTable,
@@ -21,6 +22,42 @@ const {
 } = require('./documents.cjs');
 function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProvider, getSession, api }) {
   const previews = new Set();
+  let printWindow = null;
+  let printWindowReady = Promise.resolve();
+  let printQueue = Promise.resolve();
+  const printerList = createPrinterHealthCache(() => windowProvider().webContents.getPrintersAsync());
+  let closing = false;
+  function createDocumentWindow(worker = false) {
+    const documentWindow = new BrowserWindow({
+      show: false, width: 1000, height: 850,
+      parent: worker ? undefined : windowProvider(),
+      skipTaskbar: worker, focusable: !worker,
+      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false },
+    });
+    previews.add(documentWindow);
+    documentWindow.on('closed', () => {
+      previews.delete(documentWindow);
+      if (printWindow === documentWindow) printWindow = null;
+      if (!worker && !closing) {
+        const main = windowProvider();
+        if (main && !main.isDestroyed?.()) { main.show?.(); main.focus?.(); }
+      }
+    });
+    documentWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    documentWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+    return documentWindow;
+  }
+  function warmup() {
+    void printerList().catch(() => {});
+    if (!printWindow) {
+      printWindow = createDocumentWindow(true);
+      // Start Chromium while the user is signing in, before a label is requested.
+      printWindowReady = printWindow.loadURL ? printWindow.loadURL('about:blank').catch(() => {}) : Promise.resolve();
+    }
+  }
+  const printerHealth = createPrinterHealthCache();
+  // Warm the status check during app startup, outside the user's first print request.
+  void printerHealth().catch(() => {});
   const owner = () => {
     const s = getSession();
     if (!s) throw new Error('سجل الدخول أولًا');
@@ -48,14 +85,45 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
   const QR_OPTIONS = { errorCorrectionLevel: 'L', width: 1200, margin: 2 };
 
   /** Renders `body` in a hidden window and previews / saves as PDF / prints it with the mode's page geometry. */
-  async function runJob({ body, settings, mode, action, session, calibration = false, title = 'شؤون العسكريين' }) {
+  function runJob(job) {
+    if (job.action !== 'print') return renderJob(job);
+    // A shared renderer must finish one native print callback before loading the next label.
+    const pending = printQueue.then(async () => {
+      if (!job.receipt) return renderJob(job);
+      const copies = geometry.receiptConfig(job.settings).copies;
+      for (let i = 0; i < copies; i++) {
+        if (getSession() !== job.session) throw new Error('تغيرت الجلسة');
+        const reservation = await api('POST', '/api/canteen/receipt-print', { id: job.receipt.id });
+        try {
+          await renderJob({ ...job, settings: { ...job.settings, receiptCopies: 1 }, body: canteenReceipt(job.receipt, job.printedBy, reservation.printNumber) });
+        } catch (error) {
+          try {
+            await api('POST', '/api/canteen/receipt-print/failed', { id: job.receipt.id, reservationId: reservation.reservationId });
+          } catch (failure) { console.error('Receipt print reservation cleanup failed:', failure.message); }
+          throw error;
+        }
+      }
+      return true;
+    });
+    printQueue = pending.catch(() => {});
+    return pending;
+  }
+  async function renderJob({ body, settings, mode, action, session, calibration = false, title = 'شؤون العسكريين', requestedAt = performance.now() }) {
+    if (getSession() !== session) throw new Error('تغيرت الجلسة');
+    const timing = { action, mode, prepareMs: Math.round(performance.now() - requestedAt) };
+    const started = performance.now();
     const folder = path.join(app.getPath('userData'), 'print');
     fs.mkdirSync(folder, { recursive: true });
+    // Run device discovery while Chromium lays out the document, rather than afterwards.
+    const healthReady = action === 'print' ? printerHealth().catch((error) => {
+      fs.appendFileSync(path.join(folder, 'print-errors.log'), `${new Date().toISOString()} printer status: ${error.message}\n`);
+      return [];
+    }) : undefined;
     const source = path.join(folder, `${require('node:crypto').randomUUID()}.html`);
     fs.writeFileSync(
       source,
       documentHtml({
-        title,
+        title: action === 'preview' ? `معاينة — ${title}` : title,
         body,
         settings,
         mode,
@@ -63,17 +131,8 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
         fontUrl: pathToFileURL(path.join(__dirname, '../fonts/plex-arabic-arabic-400.woff2')).href,
       }),
     );
-    const preview = new BrowserWindow({
-      show: false,
-      width: 1000,
-      height: 850,
-      parent: windowProvider(),
-      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
-    });
-    previews.add(preview);
-    preview.on('closed', () => previews.delete(preview));
-    preview.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    preview.webContents.on('will-navigate', (event) => event.preventDefault());
+    if (action === 'print') warmup();
+    const preview = action === 'print' ? printWindow : createDocumentWindow();
     const cleanup = () => {
       try {
         fs.unlinkSync(source);
@@ -81,10 +140,20 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
         // Temp file already gone: nothing to clean.
       }
     };
-    preview.on('closed', cleanup);
+    if (action !== 'print') preview.on('closed', cleanup);
     let shown = false;
     try {
+      if (action === 'print') await printWindowReady;
+      const printersReady = action === 'print' ? printerList() : undefined;
+      // Attach rejection handlers immediately while rendering proceeds in parallel.
+      const devicesReady = printersReady ? Promise.all([printersReady, healthReady]).then(
+        ([printers, health]) => ({ printers, health }),
+        (error) => ({ error }),
+      ) : undefined;
       await preview.loadFile(source);
+      await preview.webContents.executeJavaScript(`${mode === 'label' ? 'Promise.resolve()' : 'document.fonts.ready'}.then(() => Promise.all(Array.from(document.images, img => img.decode().catch(() => {})))).then(() => true)`);
+      if (mode === 'memo') await preview.webContents.executeJavaScript(require('./documents/memo-pagination.cjs').MEMO_PAGINATION_SCRIPT);
+      timing.renderMs = Math.round(performance.now() - started);
       if (action === 'preview') {
         preview.show();
         shown = true;
@@ -107,31 +176,43 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
         fs.writeFileSync(result.filePath, pdf);
         return true;
       }
-      const sendToPrinter = (options) =>
-        new Promise((resolve, reject) =>
-          preview.webContents.print(options, (success, reason) =>
-            success ? resolve() : reject(new Error(reason || 'تعذرت الطباعة')),
-          ),
-        );
       const options = geometry.printOptions(spec, settings);
+      const devicesStarted = performance.now();
+      const devices = await devicesReady;
+      timing.deviceWaitMs = Math.round(performance.now() - devicesStarted);
+      if (devices.error) throw devices.error;
+      // The print action always sends directly; only the preview action opens a window.
+      if (!options.deviceName) options.deviceName = devices.printers.find((printer) => printer.isDefault)?.name
+        || devices.health.find((printer) => printer.Default && devices.printers.some((installed) => installed.name === printer.Name))?.Name || '';
+      if (!options.deviceName) throw new Error('اختَر طابعة من الإعدادات أو عيّن طابعة افتراضية في Windows');
+      options.silent = true;
+      validatePrinter(options, devices.printers, devices.health);
+      const sendToPrinter = async (printOptions) => {
+        if (getSession() !== session) throw new Error('تغيرت الجلسة');
+        try {
+          return await sendPrintJob(preview.webContents, printOptions);
+        } catch (error) {
+          fs.appendFileSync(path.join(folder, 'print-errors.log'), `${new Date().toISOString()} ${JSON.stringify({ mode, deviceName: printOptions.deviceName, pageSize: printOptions.pageSize, error: error.message })}\n`);
+          throw error;
+        }
+      };
       // Receipts: one job per copy (each its own page); everything else prints once.
       const copies = mode === 'receipt' && !calibration ? geometry.receiptConfig(settings).copies : 1;
+      const nativeStarted = performance.now();
       for (let i = 0; i < copies; i++) {
-        try {
-          await sendToPrinter(options);
-        } catch (error) {
-          // A silent job can fail (printer offline, name mismatch): fall back to the system dialog instead of doing nothing.
-          if (!options.silent) throw error;
-          await sendToPrinter({ ...options, silent: false });
-        }
+        await sendToPrinter(options);
       }
+      timing.nativePrintMs = Math.round(performance.now() - nativeStarted);
       return true;
     } finally {
-      if (!shown) preview.close();
+      if (action === 'print') fs.appendFileSync(path.join(folder, 'print-timings.jsonl'), JSON.stringify({ at: new Date().toISOString(), ...timing, totalMs: Math.round(performance.now() - requestedAt) }) + '\n');
+      if (action === 'print') cleanup();
+      else if (!shown) preview.close();
     }
   }
 
   expose('app:test-print', async (arg) => {
+    const requestedAt = performance.now();
     const session = getSession();
     if (!session) throw new Error('سجل الدخول أولًا');
     if (session.kind !== 'internal') throw new Error('الطباعة متاحة للجهاز الداخلي');
@@ -145,6 +226,7 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
           ? testReceipt(settings, await QRCode.toDataURL('CALIBRATION', { ...QR_OPTIONS, width: 400 }))
           : testOffice();
     return runJob({
+      requestedAt,
       body,
       settings,
       mode: kind,
@@ -167,9 +249,10 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
     return true;
   });
   expose('app:document', async (arg) => {
+    const requestedAt = performance.now();
     const session = getSession();
     if (!session) throw new Error('سجل الدخول أولًا');
-    const KINDS = ['card', 'qr', 'visitor-qr', 'voucher', 'report', 'daily-report', 'canteen', 'canteen-statement'];
+    const KINDS = ['visitor-cards', 'card', 'qr', 'visitor-qr', 'voucher', 'report', 'daily-report', 'canteen', 'canteen-statement'];
     if (!arg || !KINDS.includes(arg.type) || !['print', 'pdf', 'preview'].includes(arg.mode))
       throw new Error('طلب طباعة غير صالح');
     if (arg.type === 'canteen' || arg.type === 'canteen-statement') canteenPrinter();
@@ -177,14 +260,17 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
     const catalog = await api('GET', '/api/catalog');
     const settings = catalog.settings;
     let body;
+    let receipt;
+    const printedBy = session.user.username || session.user.name;
     if (arg.type === 'report') body = reportTable(await api('GET', reportPath(arg.filter)));
     else if (arg.type === 'daily-report') {
       const q = arg.date ? `?date=${encodeURIComponent(arg.date)}` : '';
       body = dailyReportHtml(await api('GET', `/api/reports/daily${q}`));
-    } else if (arg.type === 'voucher') body = voucher(await api('GET', `/api/permit?id=${encodeURIComponent(arg.id)}`));
+    } else if (arg.type === 'voucher') body = voucher(await api('GET', `/api/permit?id=${encodeURIComponent(arg.id)}`), printedBy);
     else if (arg.type === 'canteen') {
       if (!arg.id) throw new Error('معرف العملية مطلوب');
-      body = canteenReceipt(await api('GET', `/api/canteen/transaction?id=${encodeURIComponent(arg.id)}`));
+      receipt = await api('GET', `/api/canteen/transaction?id=${encodeURIComponent(arg.id)}`);
+      body = canteenReceipt(receipt, printedBy);
     } else if (arg.type === 'canteen-statement') {
       if (!arg.soldierId || !arg.month) throw new Error('اختر العسكري والشهر');
       const outletQ = arg.outletId ? `&outletId=${encodeURIComponent(arg.outletId)}` : '';
@@ -194,6 +280,13 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       );
       const soldier = (await api('GET', `/api/soldier?id=${encodeURIComponent(arg.soldierId)}`)).soldier;
       body = canteenStatement({ soldier, ...ledger });
+    } else if (arg.type === 'visitor-cards') {
+      const numbers = arg.cardNos;
+      if (!Array.isArray(numbers) || numbers.length < 1 || numbers.length > 24 ||
+          numbers.some(no => !Number.isInteger(no) || no < 1 || no > 24) ||
+          new Set(numbers).size !== numbers.length) throw new Error('اختر بطاقات من 1 إلى 24');
+      const qr = await Promise.all(numbers.map(no => QRCode.toDataURL(String(no), QR_OPTIONS)));
+      body = visitorLabels(numbers, qr, 1);
     } else {
       if (
         !Array.isArray(arg.ids) ||
@@ -223,7 +316,7 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       }
     }
     if (getSession() !== session) throw new Error('تغيرت الجلسة');
-    return runJob({ body, settings, mode: geometry.modeOf(arg.type), action: arg.mode, session });
+    return runJob({ body, settings, mode: geometry.modeOf(arg.type), action: arg.mode, session, requestedAt, receipt, printedBy });
   });
   expose('app:pick-attachment', async () => {
     owner();
@@ -303,8 +396,12 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
     return result;
   });
   return {
+    warmup,
     close: () => {
+      closing = true;
       for (const preview of previews) preview.close();
+      closing = false;
+      printWindow = null;
       legacySource = null;
     },
   };

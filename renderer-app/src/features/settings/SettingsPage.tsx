@@ -5,7 +5,6 @@ import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Grid from '@mui/material/Grid';
 import MenuItem from '@mui/material/MenuItem';
@@ -14,7 +13,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { bridge, post, unwrap } from '@/api/client';
@@ -26,7 +25,10 @@ import { RowActions, ToneChip } from '@/components/interactive';
 import { OUTLET_LABELS, TIER_LABELS } from '@/lib/format';
 import { notify } from '@/lib/notify';
 import { useCatalog } from '@/lib/queries';
+import { LOGO_SRC } from '@/lib/brand';
 import { ReceiptPrinterCard, receiptFrom } from './ReceiptPrinterCard';
+import { ExitReasonsCard } from './ExitReasonsCard';
+import { MemoSettingsCard } from './MemoSettingsCard';
 
 const schema = z.object({
   unitName: z.string().trim().min(1, 'اسم الوحدة مطلوب').max(100),
@@ -40,8 +42,6 @@ const schema = z.object({
   labelWidthMm: z.coerce.number().min(20, 'العرض من 20 إلى 120 مم').max(120, 'العرض من 20 إلى 120 مم'),
   labelHeightMm: z.coerce.number().min(15, 'الارتفاع من 15 إلى 200 مم').max(200, 'الارتفاع من 15 إلى 200 مم'),
   silentPrint: z.boolean(),
-  reason1: z.string().max(40, 'حتى 40 حرفًا').optional(),
-  reason2: z.string().max(40, 'حتى 40 حرفًا').optional(),
   showLogo: z.boolean(),
   autoBackup: z.boolean(),
   autoBackupIntervalHours: z.string(),
@@ -50,6 +50,7 @@ const schema = z.object({
 type Values = z.input<typeof schema>;
 
 const LABEL_PRESETS = [
+  { value: '45x50', label: '4.5×5 سم (45×50 مم)' },
   { value: '89x102', label: '3.5×4 بوصة (89×102 مم)' },
   { value: '100x100', label: '100×100 مم' },
   { value: '80x60', label: '80×60 مم' },
@@ -72,14 +73,11 @@ export function SettingsPage() {
     <>
       <PageHeader title="الإعدادات" description="الشعار، الكانتينات والبوفيهات، فئات الزوار، أسباب الخروج، وخيارات الطباعة." />
       <UnitForm />
+      <MemoSettingsCard key={`memo-${catalog.data.settings.version}`} settings={catalog.data.settings} />
       <OutletsBlock kind="canteen" />
       <OutletsBlock kind="buffet" />
       <CategoriesBlock />
-      <SectionCard title="أسباب الخروج الثابتة">
-        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-          {catalog.data.exitReasons.map((r) => <Chip key={r} label={r} size="small" variant="outlined" />)}
-        </Stack>
-      </SectionCard>
+      <ExitReasonsCard key={catalog.data.settings.version} settings={catalog.data.settings} reasons={catalog.data.exitReasons} />
     </>
   );
 }
@@ -90,6 +88,8 @@ function UnitForm() {
   const s = catalog.data!.settings;
   const printers = useQuery({ queryKey: ['printers'], queryFn: () => unwrap(bridge().printers()), retry: false });
   const [logo, setLogo] = useState<string | null | undefined>(undefined); // undefined = unchanged
+  const pendingPrint = useRef(false);
+  const [printingKind, setPrintingKind] = useState<'label' | 'receipt' | 'office' | null>(null);
   const shownLogo = logo === undefined ? s.logo : logo;
   const { control, handleSubmit, formState, watch, setValue } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -98,7 +98,7 @@ function UnitForm() {
       labelPrinter: s.labelPrinter ?? '', receiptPrinter: s.receiptPrinter ?? '',
       labelPreset: labelPresetOf(s.labelWidthMm ?? 89, s.labelHeightMm ?? 102), labelWidthMm: s.labelWidthMm ?? 89, labelHeightMm: s.labelHeightMm ?? 102,
       silentPrint: s.silentPrint === true,
-      reason1: s.extraReasons[0] ?? '', reason2: s.extraReasons[1] ?? '', showLogo: s.showLogo,
+      showLogo: s.showLogo,
       autoBackup: s.autoBackup !== false, autoBackupIntervalHours: String(s.autoBackupIntervalHours ?? 24), backupRetentionDays: s.backupRetentionDays ?? 30,
     },
   });
@@ -124,11 +124,17 @@ function UnitForm() {
     }
   };
   const testPrint = async (kind: 'label' | 'receipt' | 'office') => {
+    if (pendingPrint.current) return;
+    pendingPrint.current = true;
+    setPrintingKind(kind);
     try {
       await unwrap(bridge().testPrint({ kind }));
       notify.success('تم إرسال الطباعة الاختبارية');
     } catch (e) {
       notify.apiError(e);
+    } finally {
+      pendingPrint.current = false;
+      setPrintingKind(null);
     }
   };
   const submit = handleSubmit(async (raw) => {
@@ -138,7 +144,7 @@ function UnitForm() {
         unitName: v.unitName, parentFormation: v.parentFormation ?? '', paper: v.paper, margins: v.margins, printer: v.printer ?? '',
         labelPrinter: v.labelPrinter ?? '', receiptPrinter: v.receiptPrinter ?? '',
         labelWidthMm: v.labelWidthMm, labelHeightMm: v.labelHeightMm, silentPrint: v.silentPrint, ...receiptFrom(s),
-        extraReasons: [v.reason1, v.reason2].filter((r): r is string => Boolean(r?.trim())),
+        exitReasons: catalog.data!.exitReasons,
         showLogo: v.showLogo, logo: logo === undefined ? s.logo : logo,
         autoBackup: v.autoBackup, autoBackupIntervalHours: Number(v.autoBackupIntervalHours), backupRetentionDays: v.backupRetentionDays,
         version: s.version,
@@ -162,15 +168,13 @@ function UnitForm() {
                 <RhfSelect control={control} name="paper" label="مقاس الورق" options={[{ value: 'A4', label: 'A4' }, { value: 'A5', label: 'A5' }]} />
                 <RhfSelect control={control} name="margins" label="الهوامش" options={[{ value: 'normal', label: 'عادية' }, { value: 'narrow', label: 'ضيقة' }]} />
               </Stack>
-              <RhfText control={control} name="reason1" label="سبب خروج إضافي 1 (اختياري)" />
-              <RhfText control={control} name="reason2" label="سبب خروج إضافي 2 (اختياري)" />
             </Stack>
           </SectionCard>
         </Grid>
         <Grid size={{ xs: 12, lg: 6 }}>
           <SectionCard title="الشعار">
             <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-              <Avatar variant="rounded" src={shownLogo ?? undefined} sx={{ width: 72, height: 72 }} />
+              <Avatar variant="rounded" src={shownLogo || LOGO_SRC} sx={{ width: 72, height: 72, bgcolor: 'transparent', '& img': { objectFit: 'contain' } }} />
               <Button variant="tonal" onClick={pickLogo}>اختيار الشعار</Button>
               <Button variant="tonal" color="inherit" disabled={!shownLogo} onClick={() => { setLogo(null); notify.info('اضغط حفظ لتأكيد إزالة الشعار'); }}>إزالة الشعار</Button>
               <Controller control={control} name="showLogo" render={({ field }) => <FormControlLabel control={<Switch checked={Boolean(field.value)} onChange={(_e, c) => field.onChange(c)} />} label="إظهار شعار الوحدة في المستندات" />} />
@@ -193,7 +197,7 @@ function UnitForm() {
                   <Box sx={{ flex: 1 }}>
                     <RhfSelect control={control} name={p.field} label={p.title} helperText={p.hint} options={printerOptions} />
                   </Box>
-                  <Button variant="tonal" startIcon={<PrintIcon />} onClick={() => testPrint(p.kind)}>طباعة اختبارية — {p.kind === 'label' ? 'ملصق' : p.kind === 'receipt' ? 'إيصال' : 'ورقة'}</Button>
+                  <Button variant="tonal" startIcon={<PrintIcon />} loading={printingKind === p.kind} disabled={printingKind !== null && printingKind !== p.kind} onClick={() => testPrint(p.kind)}>طباعة اختبارية — {p.kind === 'label' ? 'ملصق' : p.kind === 'receipt' ? 'إيصال' : 'ورقة'}</Button>
                 </Stack>
               ))}
               {printers.isError && <Alert severity="warning">تعذر قراءة قائمة الطابعات من النظام.</Alert>}
@@ -208,6 +212,7 @@ function UnitForm() {
                   </>
                 )}
               </Stack>
+              <Alert severity="info">الملصق بدون شعار. اختَر مقاس الملصق الواحد الفعلي بدون الفراغ بين الملصقات، واضبط نفس العرض والارتفاع في تعريف الطابعة. لو الطابعة تتخطى ملصقًا، عاير حساس الفراغات من إعدادات الطابعة. احفظ قبل الطباعة الاختبارية.</Alert>
               <Controller control={control} name="silentPrint" render={({ field }) => <FormControlLabel control={<Switch checked={Boolean(field.value)} onChange={(_e, c) => field.onChange(c)} />} label="طباعة مباشرة بدون نافذة (عند تحديد طابعة)" />} />
             </Stack>
           </SectionCard>

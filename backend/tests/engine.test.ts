@@ -1,3 +1,4 @@
+import { completeSoldierInput } from './soldier.fixture';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -25,7 +26,7 @@ test('PRAGMAs, partial unique indexes and counters hold at the database level', 
   const jm = (await prisma.$queryRawUnsafe<{ journal_mode: string }[]>('PRAGMA journal_mode'))[0]!;
   assert.equal(jm.journal_mode, 'wal');
 
-  const soldier = await app.api('POST', '/api/soldiers', soldierBody(1));
+  const soldier = await app.api('POST', '/api/soldiers', completeSoldierInput(soldierBody(1)));
   const admin = await prisma.user.findFirstOrThrow();
   const permit = (no: number, extra = {}) => ({
     id: randomUUID(),
@@ -67,7 +68,7 @@ test('parallel writers are serialised: unique permit numbers, no lost updates, i
   const { send, internal, gate } = app;
   const gateToken = await app.login(gate, 'admin', 'test-password-long');
   const soldiers: { id: string }[] = [];
-  for (let i = 1; i <= 8; i++) soldiers.push(await app.api('POST', '/api/soldiers', soldierBody(i)));
+  for (let i = 1; i <= 8; i++) soldiers.push(await app.api('POST', '/api/soldiers', completeSoldierInput(soldierBody(i))));
   const exits = await Promise.all(
     soldiers.map((s) =>
       send(
@@ -123,7 +124,7 @@ test('data survives a restart; migrations are idempotent and checksummed', async
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mil-restart-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const first = await createTestApp(t, { withBackups: false, dir });
-  const soldier = await first.api('POST', '/api/soldiers', soldierBody(1));
+  const soldier = await first.api('POST', '/api/soldiers', completeSoldierInput(soldierBody(1)));
   await first.close();
   const second = await createTestApp(t, { withBackups: false, dir, seedDemo: true });
   const list = await second.api('GET', '/api/soldiers');

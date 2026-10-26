@@ -14,7 +14,7 @@ for (let i = 0; i < count; i++) {
   if (!largest || size > largest.size) largest = { size, offset };
 }
 const image = ico.subarray(largest.offset, largest.offset + largest.size);
-const unpacked = path.join(root, 'artifacts', 'win-unpacked');
+const unpacked = path.resolve(root, process.argv[2] || 'artifacts/win-unpacked');
 const exe = fs.existsSync(unpacked)
   ? fs.readdirSync(unpacked).find((f) => f.endsWith('.exe') && !/uninstall/i.test(f))
   : null;

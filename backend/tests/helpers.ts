@@ -91,6 +91,7 @@ export async function createTestApp(
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Device-Id': device.id,
+      'X-Device-Key': Buffer.from(device.publicKey).toString('base64'),
       'X-Timestamp': timestamp,
       'X-Nonce': nonce,
       'X-Signature': sign(

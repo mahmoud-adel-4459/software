@@ -25,3 +25,20 @@ test('QR payload includes military number and gate fields', async () => {
   assert.equal(parseQrScan(decoded.data), '000012345');
   assert.equal(gateProfileRows(soldier).length, 18);
 });
+
+
+test('visitor QR survives numeric scanner input and legacy Arabic keyboard layout', async () => {
+  const { buildVisitorQrPayload, parseGateScan } = require('../shared/soldier-profile.cjs');
+  for (const id of ['0f8fad5b-d9cb-469f-a165-70867728950e', '00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffffffff']) {
+    const payload = buildVisitorQrPayload({ id });
+    assert.match(payload, /^99[0-9]{39}$/);
+    const png = PNG.sync.read(await QRCode.toBuffer(payload, { width: 420, margin: 2 }));
+    const decoded = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+    assert.ok(decoded);
+    assert.deepEqual(parseGateScan(decoded.data), { kind: 'visitor', id });
+    assert.deepEqual(parseGateScan(id), { kind: 'visitor', id });
+    const keys = { a: 'ش', b: 'لا', c: 'ؤ', d: 'ي', e: 'ث', f: 'ب' };
+    assert.deepEqual(parseGateScan(id.replace(/[a-f]/g, c => keys[c])), { kind: 'visitor', id });
+  }
+  assert.deepEqual(parseGateScan('99' + '9'.repeat(39)), { kind: 'none' });
+});

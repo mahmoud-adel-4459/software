@@ -48,6 +48,8 @@ export function MovementsPage() {
     { field: 'no', headerName: 'الإذن', width: 90, renderCell: (c) => <span className="num">#{c.value}</span> },
     { field: 'name', headerName: 'العسكري', flex: 1.2, minWidth: 180, renderCell: (c) => <Stack><b>{c.row.name}</b><Typography variant="caption" className="num">{c.row.military_no}</Typography></Stack> },
     { field: 'reason', headerName: 'السبب', flex: 1, minWidth: 140 },
+    { field: 'notes', headerName: 'ملاحظات الخروج', minWidth: 200, flex: 1 },
+    { field: 'entry_notes', headerName: 'ملاحظات الدخول', minWidth: 200, flex: 1 },
     { field: 'exit_at', headerName: 'وقت الخروج', width: 150, valueFormatter: (v: string) => formatDateTime(v) },
     { field: 'expected_return', headerName: 'العودة المتوقعة', width: 150, valueFormatter: (v: string) => formatDateTime(v) },
     { field: 'returned_at', headerName: 'الدخول الفعلي', width: 150, valueFormatter: (v: string | null) => (v ? formatDateTime(v) : 'لم يسجل بعد') },

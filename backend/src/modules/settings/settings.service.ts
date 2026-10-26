@@ -1,10 +1,11 @@
 import { requireValue } from '@/common/errors/AppError';
 import type { Input } from '@/common/http/types';
-import { EXIT_REASONS } from '@/common/utils/catalog';
+import { exitReasonsOf } from './exit-reasons';
 import { attachmentBytes, text } from '@/common/utils/validation';
 import type { Tx } from '@/config/prisma';
 import { parseBackupPolicyFields } from '@/modules/backup/backup.policy';
 import { parsePrintFields } from './print.settings';
+import { parseMemoFields } from './memo.settings';
 
 function validateLogo(logo: unknown): string | null {
   if (!logo) return null;
@@ -19,9 +20,13 @@ export async function saveSettings(tx: Tx, data: Input) {
   const current = await tx.settings.findUnique({ where: { id: 1 } });
   requireValue(current, 'الإعدادات غير موجودة', 500);
   requireValue(current.version === data.version, 'الإعدادات تغيرت؛ حدّث الصفحة', 409);
-  requireValue(Array.isArray(data.extraReasons) && data.extraReasons.length <= 2, 'يسمح بسببين إضافيين فقط');
-  const reasons = (data.extraReasons as unknown[]).map((reason) => text(reason, 40, true));
-  requireValue(new Set([...EXIT_REASONS, ...reasons]).size === EXIT_REASONS.length + reasons.length, 'سبب خروج مكرر');
+  const previous = current.data as { exitReasons?: unknown; extraReasons?: unknown };
+  const submitted = data.exitReasons === undefined
+    ? exitReasonsOf(previous.exitReasons === undefined && data.extraReasons !== undefined ? { extraReasons: data.extraReasons } : previous)
+    : data.exitReasons;
+  requireValue(Array.isArray(submitted), 'أسباب الخروج يجب أن تكون قائمة');
+  const reasons = submitted.map((reason: unknown) => text(reason, 100, true));
+  requireValue(new Set(reasons).size === reasons.length, 'سبب خروج مكرر');
   requireValue(
     ['A4', 'A5'].includes(data.paper as string) && ['normal', 'narrow'].includes(data.margins as string),
     'إعدادات طباعة غير صالحة',
@@ -29,10 +34,13 @@ export async function saveSettings(tx: Tx, data: Input) {
   const settings = {
     unitName: text(data.unitName, 100, true),
     parentFormation: text(data.parentFormation || '', 100),
-    extraReasons: reasons,
+    exitReasons: reasons,
+    extraReasons: [],
     paper: data.paper,
     margins: data.margins,
     ...parsePrintFields(data),
+    ...parseMemoFields(data, previous),
+    memoLogo: validateLogo(data.memoLogo === undefined ? (previous as Input).memoLogo : data.memoLogo),
     showLogo: Boolean(data.showLogo),
     logo: validateLogo(data.logo),
     ...parseBackupPolicyFields(data),

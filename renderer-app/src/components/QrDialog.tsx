@@ -67,8 +67,8 @@ export function QrDialog({
       <DialogTitle>{heading}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ alignItems: 'center' }}>
-          <Typography variant="h4">{name}</Typography>
-          <Typography className="num" color="text.secondary">{subtitle}</Typography>
+          {name && <Typography variant="h4">{name}</Typography>}
+          {subtitle && <Typography className="num" color="text.secondary">{subtitle}</Typography>}
           {qr.isError ? <Alert severity="error" sx={{ width: '100%' }}>{qr.error.message}</Alert> : <QrImage src={qr.data} />}
           {labelDoc && <DocButtons doc={labelDoc} modes={['preview', 'print']} size="medium" />}
           {labelDoc && <LabelPrinterNote />}

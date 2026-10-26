@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const completeSoldier = require('../tests/fixtures/complete-soldier.json');
 const { randomUUID } = require('node:crypto');
 
 const ROOT = path.join(__dirname, '..');
@@ -117,6 +118,13 @@ async function main() {
     assert.equal(session.kind, 'internal');
     const catalog = ok(await desktop('request', 'GET', '/api/catalog'), 'catalog');
     assert.ok(catalog.exitReasons.length > 10);
+    // Exercise the real print path without submitting paper to a physical printer.
+    ok(await desktop('request', 'POST', '/api/settings', { ...catalog.settings, labelPrinter: 'E2E-missing-printer', silentPrint: true }, randomUUID()), 'set missing printer');
+    const printFailure = await desktop('testPrint', { kind: 'label' });
+    assert.equal(printFailure.ok, false, 'missing printer must not report success');
+    assert.match(printFailure.error, /غير موجودة|لا توجد طابعات/);
+    const changedCatalog = ok(await desktop('request', 'GET', '/api/catalog'), 'updated catalog');
+    ok(await desktop('request', 'POST', '/api/settings', { ...catalog.settings, version: changedCatalog.settings.version }, randomUUID()), 'restore printers');
 
     const soldier = ok(
       await desktop(
@@ -124,6 +132,7 @@ async function main() {
         'POST',
         '/api/soldiers',
         {
+          ...completeSoldier,
           name: 'اختبار إلكترون',
           militaryNo: '000099001',
           nationalId: '30101010101099',
@@ -136,6 +145,14 @@ async function main() {
       'create soldier',
     );
     const qr = ok(await desktop('qr', soldier.id), 'qr');
+    for (const category of ['grant', 'leave', 'penalty', 'reward', 'medical', 'medical_affairs', 'security_report']) {
+      ok(await desktop('request', 'POST', '/api/soldier/records', {
+        soldierId: soldier.id, category, title: 'سجل تجربة إلكترون', recordDate: '2026-10-22',
+        details: 'بيانات ملف العسكري',
+      }, randomUUID()), 'create personnel record: ' + category);
+    }
+    const personnel = ok(await desktop('request', 'GET', `/api/soldier/records?soldierId=${soldier.id}`), 'soldier personnel records');
+    assert.equal(personnel.records.length, 7);
     assert.match(qr, /^data:image\/png;base64,/);
 
     const visitor = ok(
@@ -149,6 +166,22 @@ async function main() {
       'create visitor',
     );
     assert.ok(ok(await desktop('qrVisitor', visitor.id), 'visitor qr').startsWith('data:image/png;base64,'));
+    const cardSet = ok(await desktop('request', 'GET', '/api/visitor-cards'), 'reusable visitor cards');
+    assert.equal(cardSet.cards.length, 24);
+    for (const name of ['زائر البطاقة الأول', 'زائر البطاقة الثاني']) {
+      const entered = ok(await desktop('request', 'POST', '/api/gate/visitor-card', {
+        cardNo: 1, action: 'in', name, categoryId: '00000000-0000-0000-0000-000000000020', purpose: 'زيارة اختبار',
+      }, randomUUID()), 'card check-in');
+      const occupied = ok(await desktop('request', 'GET', '/api/gate/visitor-card?cardNo=1'), 'card occupant');
+      assert.equal(occupied.openVisit.visitor.name, name);
+      ok(await desktop('request', 'POST', '/api/gate/visitor-card', {
+        cardNo: 1, action: 'out', visitId: entered.id,
+      }, randomUUID()), 'card check-out');
+      assert.equal(ok(await desktop('request', 'GET', '/api/gate/visitor-card?cardNo=1'), 'free card').openVisit, null);
+    }
+    ok(await desktop('document', {
+      type: 'visitor-cards', cardNos: Array.from({ length: 24 }, (_, i) => i + 1), mode: 'preview',
+    }), '24 reusable QR cards preview');
     ok(
       await desktop('document', { type: 'visitor-qr', ids: [visitor.id], copies: 1, mode: 'preview' }),
       'visitor-qr document preview',
@@ -218,6 +251,7 @@ async function main() {
         {
           rows: [
             {
+              ...completeSoldier, ...completeSoldier.details,
               name: 'مستورد 1',
               militaryNo: 880001,
               nationalId: 30101010101101,
@@ -226,6 +260,7 @@ async function main() {
               unit: 'وحدة',
             },
             {
+              ...completeSoldier, ...completeSoldier.details,
               name: 'مستورد 2',
               militaryNo: '000099001',
               nationalId: '30101010101102',
@@ -258,7 +293,7 @@ async function main() {
   } finally {
     spawnSync('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' });
     await sleep(1500);
-    fs.rmSync(PROFILE, { recursive: true, force: true });
+    fs.rmSync(PROFILE, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
   }
   process.exit(failed ? 1 : 0);
 }

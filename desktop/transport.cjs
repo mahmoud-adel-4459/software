@@ -30,6 +30,7 @@ function callServer(config, identity, token, method, apiPath, data, requestId) {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
     'X-Device-Id': deviceId,
+    'X-Device-Key': Buffer.from(identity.publicKey).toString('base64'),
     'X-Timestamp': timestamp,
     'X-Nonce': nonce,
     'X-Signature': signature,

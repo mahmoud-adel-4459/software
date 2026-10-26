@@ -1,11 +1,12 @@
 {
   "name": "military-affairs-desktop",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Arabic military affairs LAN desktop client and server",
   "main": "desktop/main.cjs",
   "scripts": {
-    "start": "node scripts/ensure-built.cjs && electron .",
+    "start": "node scripts/ensure-built.cjs && electron . -- --standalone",
+    "start:remote": "node scripts/ensure-built.cjs && electron . -- --remote",
     "start:standalone": "node scripts/ensure-built.cjs && electron . -- --standalone",
     "desktop": "node scripts/ensure-built.cjs && electron . -- --play",
     "check": "node scripts/check.cjs",
@@ -42,6 +43,7 @@
     "better-sqlite3": "^12.11.1",
     "exceljs": "^4.4.0",
     "express": "^5.3.0",
+    "node-forge": "^1.4.0",
     "qrcode": "^1.5.4",
     "zod": "^4.6.7"
   },
@@ -83,6 +85,7 @@
       "backend/dist/**/*",
       "backend/prisma/migrations/**/*",
       "assets/logo-128.png",
+      "assets/logokr.png",
       "build/icon.png",
       "package.json"
     ],
@@ -93,22 +96,6 @@
       {
         "from": "native/electron/better_sqlite3.node",
         "to": "native/better_sqlite3.node"
-      },
-      {
-        "from": "private/ca-cert.pem",
-        "to": "lab-demo/ca-cert.pem"
-      },
-      {
-        "from": "private/ca-cert.pem",
-        "to": "private/ca-cert.pem"
-      },
-      {
-        "from": "private/server-cert.pem",
-        "to": "private/server-cert.pem"
-      },
-      {
-        "from": "private/server-key.pem",
-        "to": "private/server-key.pem"
       }
     ],
     "win": {

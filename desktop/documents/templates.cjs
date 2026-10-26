@@ -34,28 +34,13 @@ function reportTable(report) {
 
 // ---- Soldier QR labels and ID cards --------------------------------------------------------
 
-/** One sticker: QR + name + number + one small line (`rank`/category and `sub`). */
-function labelBox({ qr, name, rank, no, sub }) {
-  return join([
-    `<div class="label"><img src="${qr}" alt="QR"><div class="label-text"><strong>${esc(name)}</strong>`,
-    rank ? `<span class="label-rank">${esc(rank)}</span>` : '',
-    `<span class="label-no">${esc(no)}</span>`,
-    sub ? `<span class="label-unit">${esc(sub)}</span>` : '',
-    '</div></div>',
-  ]);
+/** One sticker contains only the QR image. */
+function labelBox({ qr }) {
+  return `<div class="label"><img src="${esc(qr)}" alt="QR"></div>`;
 }
 
-const qrLabel = (soldier, qr) =>
-  labelBox({
-    qr,
-    name: soldier.name,
-    rank: soldier.rank,
-    no: soldier.military_no,
-    sub: `${soldier.company} · ${soldier.unit}`,
-  });
-
-const visitorLabel = (visitor, qr) =>
-  labelBox({ qr, name: visitor.name, rank: visitor.category_name, no: visitor.badge_no, sub: '' });
+const qrLabel = (_soldier, qr) => labelBox({ qr });
+const visitorLabel = (_visitor, qr) => labelBox({ qr });
 
 /** Visitor QR stickers; `qr[i]` belongs to `visitors[i]`, each repeated `copies` times. */
 function visitorLabels(visitors, qr, copies = 1) {
@@ -64,13 +49,7 @@ function visitorLabels(visitors, qr, copies = 1) {
 
 /** Small sample label / receipt / sheet used by «طباعة اختبارية». */
 function testLabel(qr) {
-  return labelBox({
-    qr,
-    name: 'اختبار الطباعة',
-    rank: 'ملصق QR',
-    no: 'TEST-0001',
-    sub: new Date().toLocaleString('ar-EG'),
-  });
+  return labelBox({ qr });
 }
 /**
  * Calibration receipt: ruler across the PAPER width (mm ticks, label every 10 mm), the printable
@@ -151,7 +130,7 @@ function permitStatus(permit) {
   return 'إذن نشط — العسكري خارج الوحدة';
 }
 
-function voucher(permit) {
+function voucher(permit, printedBy = '') {
   const entered = permit.returned_at ? cell('returned_at', permit.returned_at) : 'لم يسجل الدخول بعد';
   return join([
     `<section class="rcpt"><h2>إذن خروج ودخول رقم ${esc(permit.no)}</h2>`,
@@ -164,9 +143,13 @@ function voucher(permit) {
     line('وقت الخروج', cell('at', permit.exit_at)),
     line('العودة المتوقعة', cell('expected_return', permit.expected_return)),
     line('الدخول الفعلي', entered),
+    line('ملاحظات الخروج', permit.notes),
+    line('ملاحظات الدخول', permit.entry_notes),
     sep,
     `<div class="t"><strong>${esc(permitStatus(permit))}</strong></div>`,
-    `<div class="sign">${signLine('مسؤول الخروج')}${signLine('مسؤول الدخول')}${signLine('ختم الوحدة')}</div></section>`,
+    `<div class="sign">${signLine('مسؤول الخروج')}${signLine('مسؤول الدخول')}${signLine('ختم الوحدة')}</div>`,
+    line('طُبع بواسطة', printedBy),
+    '</section>',
   ]);
 }
 
@@ -178,12 +161,13 @@ function receiptStatus(t, isReversal) {
   return t.amount_cents > 0 ? 'مشتريات كانتين' : '';
 }
 
-function canteenReceipt(t) {
+function canteenReceipt(t, printedBy = '', printNumber = 0) {
   const isReversal = t.amount_cents < 0 || t.reversal_of;
   const place = t.outlet_name || 'الكانتين';
   const status = receiptStatus(t, isReversal);
   return join([
     `<section class="rcpt"><h2>${esc(isReversal ? `إيصال تصحيح — ${place}` : `إيصال ${place}`)}</h2>`,
+    printNumber > 0 ? `<div class="t"><strong>${printNumber === 1 ? 'أصل الإيصال' : `نسخة رقم ${esc(printNumber - 1)}`}</strong></div>` : '',
     `<div class="t"><strong>${esc(t.rank)} / ${esc(t.name)}</strong></div>`,
     sep,
     line('الرقم العسكري', t.military_no),
@@ -193,7 +177,9 @@ function canteenReceipt(t) {
     line('ملاحظات', t.notes),
     status ? `<div class="t">${esc(status)}</div>` : '',
     line('مسؤول التسجيل', t.cashier),
-    `<div class="sign">${signLine('توقيع العسكري')}${signLine('توقيع الكاشير')}</div></section>`,
+    `<div class="sign">${signLine('توقيع العسكري')}${signLine('توقيع الكاشير')}</div>`,
+    line('طُبع بواسطة', printedBy),
+    '</section>',
   ]);
 }
 

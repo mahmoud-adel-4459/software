@@ -5,6 +5,9 @@
  * When you add a server route that the UI calls, add it here too.
  */
 const GET_PATHS = [
+  'soldier/records',
+  'visitor-cards',
+  'gate/visitor-card',
   'soldiers',
   'soldier',
   'gate/soldier',
@@ -28,6 +31,9 @@ const GET_PATHS = [
 const ALLOWED_GET = new RegExp(`^/api/(${GET_PATHS.join('|')})(?:\\?[^#]*)?$`);
 
 const ALLOWED_POST = new Set([
+  '/api/soldier/records',
+  '/api/soldier/records/delete',
+  '/api/gate/visitor-card',
   '/api/soldiers',
   '/api/soldier/update',
   '/api/soldier/archive',

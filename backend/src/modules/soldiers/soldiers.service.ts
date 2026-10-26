@@ -5,7 +5,8 @@ import type { Ctx, Input } from '@/common/http/types';
 import { lockSoldier } from '@/common/store/lookups';
 import { identifier, positiveInt, text } from '@/common/utils/validation';
 import type { Tx } from '@/config/prisma';
-import { MILITARY_NO, NATIONAL_ID, offsetParam, soldierFields } from './soldiers.validator';
+import { MILITARY_NO, NATIONAL_ID, offsetParam, soldierFields, soldierPhotos, requireSoldierPhotos } from './soldiers.validator';
+import { addAttachment } from './attachments.service';
 
 export async function listSoldiers(ctx: Ctx) {
   const offset = offsetParam(param(ctx, 'offset'));
@@ -52,8 +53,11 @@ export async function updateSoldier(tx: Tx, data: Input) {
   positiveInt(data.version);
   requireValue(old.version === data.version, 'تم تعديل الملف من جهاز آخر؛ أعد فتحه', 409);
   const s = soldierFields(data);
+  const photos = soldierPhotos(data.photos);
+  const existing = await tx.attachment.findMany({ where: { soldier_id: old.id }, select: { kind: true } });
+  requireSoldierPhotos([...existing.map((photo) => photo.kind), ...photos.map((photo) => photo.kind as string)]);
   requireValue(MILITARY_NO.test(s.militaryNo) && NATIONAL_ID.test(s.nationalId), 'الأرقام غير صحيحة');
-  return tx.soldier.update({
+  const updated = await tx.soldier.update({
     where: { id: old.id },
     data: {
       name: s.name,
@@ -68,6 +72,8 @@ export async function updateSoldier(tx: Tx, data: Input) {
       version: { increment: 1 },
     },
   });
+  for (const photo of photos) await addAttachment(tx, { ...photo, soldierId: old.id });
+  return updated;
 }
 
 export async function archiveSoldier(tx: Tx, data: Input) {

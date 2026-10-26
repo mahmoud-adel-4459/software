@@ -63,6 +63,7 @@ const UI_COLUMNS = {
     ['kind', 'الحركة'],
     ['at', 'الوقت'],
     ['reason', 'سبب الخروج'],
+    ['notes', 'ملاحظات الحركة'],
     ['correction_reason', 'تصحيح'],
   ],
   canteen: [
@@ -106,6 +107,7 @@ const EXPORT_FIELDS = {
     'at',
     'no',
     'reason',
+    'notes',
     'expected_return',
     'returned_at',
     'voided',

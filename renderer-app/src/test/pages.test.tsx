@@ -2,6 +2,8 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { renderApp } from './harness';
+import completeSoldier from '../../../tests/fixtures/complete-soldier.json';
+import { DETAIL_FIELDS } from '@/lib/soldierProfile';
 
 const fill = (el: HTMLElement, value: string) => fireEvent.change(el, { target: { value } });
 
@@ -73,10 +75,19 @@ describe('soldiers', () => {
     expect(screen.getByText('محمد سعيد إبراهيم')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'إضافة عسكري' }));
-    fill(await screen.findByLabelText('الاسم الرباعي'), 'سامي حسن علي');
-    fill(screen.getByLabelText('الرقم العسكري'), '777888999');
-    fill(screen.getByLabelText('الرقم القومي'), '29901011234999');
-    fill(screen.getByLabelText('السرية'), 'السرية الثالثة');
+    fill(await screen.findByLabelText(/^الاسم الرباعي/), 'سامي حسن علي');
+    fill(screen.getByLabelText(/^الرقم العسكري/), '777888999');
+    fill(screen.getByLabelText(/^الرقم القومي/), '29901011234999');
+    fill(screen.getByLabelText(/^السرية/), 'السرية الثالثة');
+    fill(screen.getByLabelText(/^رقم الهاتف/), completeSoldier.phone);
+    fill(screen.getByLabelText(/^العنوان المدني/), completeSoldier.address);
+    for (const [key, label] of Object.entries(DETAIL_FIELDS)) fill(screen.getByLabelText(new RegExp(`^${label}\\s*\\*?$`)), completeSoldier.details[key as keyof typeof completeSoldier.details]);
+    for (const photo of completeSoldier.photos) {
+      fake.pickAttachment = async () => ({ ok: true, data: photo });
+      const slot = document.querySelector(`[data-photo-kind="${photo.kind}"]`) as HTMLElement;
+      await userEvent.click(within(slot).getByRole('button', { name: 'اختيار' }));
+      await within(slot).findByRole('img');
+    }
     await userEvent.click(screen.getByRole('button', { name: 'حفظ العسكري' }));
 
     await waitFor(() => expect(fake.calls.some((c) => c.method === 'POST' && c.path === '/api/soldiers')).toBe(true));
@@ -88,8 +99,8 @@ describe('soldiers', () => {
 
   it('validates the military and national numbers before posting', async () => {
     const fake = await renderApp('/soldiers/new');
-    fill(await screen.findByLabelText('الاسم الرباعي'), 'اسم');
-    fill(screen.getByLabelText('الرقم العسكري'), '12');
+    fill(await screen.findByLabelText(/^الاسم الرباعي/), 'اسم');
+    fill(screen.getByLabelText(/^الرقم العسكري/), '12');
     await userEvent.click(screen.getByRole('button', { name: 'حفظ العسكري' }));
     expect(await screen.findByText('الرقم العسكري من 6 إلى 30 رقمًا')).toBeInTheDocument();
     expect(await screen.findByText('الرقم القومي 14 رقمًا')).toBeInTheDocument();

@@ -242,7 +242,7 @@ export async function buildDailyReport(store: Store, date: string) {
           check_out: v.check_out,
           purpose: v.purpose,
           name: v.visitor.name,
-          badge_no: v.visitor.badge_no,
+          badge_no: v.card_no == null ? v.visitor.badge_no : String(v.card_no),
           category_name: v.visitor.category.name,
         })),
       ),

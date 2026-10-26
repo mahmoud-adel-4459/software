@@ -84,6 +84,21 @@ export interface SoldierRecord {
   attachments: AttachmentMeta[];
 }
 
+export type PersonnelCategory = 'grant' | 'leave' | 'penalty' | 'reward' | 'medical' | 'medical_affairs' | 'security_report';
+export interface PersonnelRecord {
+  id: string;
+  soldier_id: string;
+  category: PersonnelCategory;
+  title: string;
+  record_date: string;
+  end_date: string | null;
+  reference: string;
+  details: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GateSoldierResponse {
   soldier: Soldier;
   photos: { id: string; kind: AttachmentKind; mime: string }[];
@@ -154,12 +169,31 @@ export interface GateVisitorResponse {
   openVisit: { id: string; purpose: string; check_in: string } | null;
 }
 
+export interface VisitorCard {
+  cardNo: number;
+  openVisit: {
+    id: string; purpose: string; check_in: string;
+    visitor: { name: string; national_id: string; phone: string; organization: string; notes: string;
+      category: { name: string } };
+  } | null;
+}
+
 export interface BackupPolicy {
   autoBackup: boolean;
   autoBackupIntervalHours: number;
   backupRetentionDays: number;
 }
 export interface UnitSettings extends Partial<BackupPolicy> {
+  memoFormation?: string | null;
+  memoUnitLine?: string | null;
+  memoRightName?: string | null;
+  memoRightRank?: string | null;
+  memoRightRole?: string | null;
+  memoLeftName?: string | null;
+  memoLeftRank?: string | null;
+  memoLeftRole?: string | null;
+  memoLogo?: string | null;
+  exitReasons?: string[];
   unitName: string;
   parentFormation: string;
   extraReasons: string[];
@@ -414,6 +448,7 @@ export interface PrinterInfo {
   isDefault?: boolean;
 }
 export interface DocumentArg {
+  cardNos?: number[];
   type: string;
   id?: string;
   ids?: string[];

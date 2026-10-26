@@ -36,12 +36,10 @@ async function startEmbeddedServer({ userDataDir, host = '127.0.0.1', port = 844
   const boot = ensureStandalone(userDataDir, { playMode });
   await migrateLegacyDatabase(boot, backendRoot);
 
-  const devices = [boot.devices.internal, boot.devices.gate].map(({ privateKey: _privateKey, ...device }) => device);
   const { createBackend } = require(path.join(backendRoot, 'dist/index.cjs'));
   const backend = await createBackend({
     dbPath: boot.dbFile,
     serverId: boot.meta.serverId,
-    licenseProvider: () => ({ installation: 'خادم محلي — Windows', serverId: boot.meta.serverId, devices }),
     backupKeyHex: ensureBackupKey(boot.root),
     backupDirectory: path.join(boot.root, 'backups'),
     admin: { username: boot.meta.adminUsername, name: boot.meta.adminName, password: boot.meta.adminPassword },
