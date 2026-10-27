@@ -3,10 +3,12 @@
 /** Gate + QR field order (Arabic labels). */
 const GATE_PROFILE_ROWS = [
   { key: 'rank', label: 'الدرجة', column: true },
+  { key: 'military_rank', label: 'الرتبة', column: true },
   { key: 'name', label: 'الاسم', column: true },
   { key: 'military_no', label: 'الرقم العسكري', column: true },
   { key: 'cardNo', label: 'رقم البطاقة', detail: true },
   { key: 'unit', label: 'الوحدة', column: true },
+  { key: 'sub_unit', label: 'الوحدة الفرعية', column: true },
   { key: 'originalUnit', label: 'الوحدة الأصلية', detail: true },
   { key: 'company', label: 'السرية', column: true },
   { key: 'specialty', label: 'التخصص', detail: true },
@@ -92,7 +94,12 @@ function buildVisitorQrPayload(visitor) {
   // Numeric encoding survives USB scanners while the Windows keyboard is Arabic.
   const hex = String(visitor.id).replaceAll('-', '');
   if (!UUID_RE.test(String(visitor.id))) throw new Error('معرف الزائر غير صالح');
-  return '99' + BigInt('0x' + hex).toString().padStart(39, '0');
+  return (
+    '99' +
+    BigInt('0x' + hex)
+      .toString()
+      .padStart(39, '0')
+  );
 }
 
 function parseGateScan(raw) {

@@ -52,7 +52,8 @@ const UI_COLUMNS = {
   soldiers: [
     ['name', 'الاسم'],
     ['military_no', 'الرقم العسكري'],
-    ['rank', 'الرتبة'],
+    ['rank', 'الدرجة'],
+    ['military_rank', 'الرتبة'],
     ['company', 'السرية'],
     ['status', 'الحالة'],
     ['archived', 'مؤرشف'],
@@ -86,6 +87,8 @@ const UI_COLUMNS = {
     ['type', 'الاختبار'],
     ['value', 'النتيجة'],
     ['unit', 'الوحدة'],
+    ['score', 'النسبة %'],
+    ['grade', 'التقدير'],
   ],
   visitor: [
     ['category_name', 'الفئة'],
@@ -98,7 +101,18 @@ const UI_COLUMNS = {
 };
 
 const EXPORT_FIELDS = {
-  soldiers: ['name', 'military_no', 'national_id', 'rank', 'company', 'unit', 'status', 'archived'],
+  soldiers: [
+    'name',
+    'military_no',
+    'national_id',
+    'rank',
+    'military_rank',
+    'company',
+    'unit',
+    'sub_unit',
+    'status',
+    'archived',
+  ],
   gate: [
     'name',
     'military_no',
@@ -115,7 +129,7 @@ const EXPORT_FIELDS = {
   ],
   canteen: ['outlet_name', 'name', 'military_no', 'company', 'at', 'amount_cents', 'notes', 'reversal_of'],
   buffet: ['outlet_name', 'name', 'military_no', 'company', 'at', 'amount_cents', 'notes', 'reversal_of'],
-  fitness: ['name', 'military_no', 'company', 'date', 'type', 'value', 'raw_result', 'unit', 'notes'],
+  fitness: ['name', 'military_no', 'company', 'date', 'type', 'value', 'raw_result', 'unit', 'score', 'grade', 'notes'],
   visitor: ['category_name', 'name', 'badge_no', 'organization', 'purpose', 'at', 'check_out', 'entry_notes'],
 };
 

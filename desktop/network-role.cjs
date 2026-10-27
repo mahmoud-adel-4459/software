@@ -45,12 +45,17 @@ function relaunchAs(app, role) {
   app.exit(0);
 }
 
-/** This PC's IPv4 LAN addresses (no loopback / link-local). */
+/**
+ * This PC's IPv4 addresses, excluding loopback. Link-local 169.254.x.x addresses are kept (listed
+ * last): a direct cable between two PCs without static IPs only has those.
+ */
 function lanAddresses() {
-  return Object.values(os.networkInterfaces())
+  const all = Object.values(os.networkInterfaces())
     .flat()
-    .filter((a) => a && a.family === 'IPv4' && !a.internal && !a.address.startsWith('169.254.'))
+    .filter((a) => a && a.family === 'IPv4' && !a.internal)
     .map((a) => a.address);
+  const linkLocal = (ip) => ip.startsWith('169.254.');
+  return [...all.filter((ip) => !linkLocal(ip)), ...all.filter(linkLocal)];
 }
 
 /** Short code shown on the unit PC; the gate PC checks the downloaded CA against it. */

@@ -5,6 +5,7 @@ import { REPORT_IDS, summarizeReport, type ReportId, type ReportRow } from '@/co
 import { cairoDate, dayStart, nextDay } from '@/common/utils/time';
 import { date, identifier, text } from '@/common/utils/validation';
 import { dateOnly, numericText } from '@/modules/fitness/fitness.service';
+import { fitnessScore, gradeFor, unitPolicyOf } from '@/modules/settings/unit-policy';
 
 const MAX_REPORT_ROWS = 10000;
 
@@ -105,18 +106,26 @@ const fitness: Builder = async (ctx, f) => {
     orderBy: { date: 'desc' },
     take,
   });
-  return rows.map((r) => ({
-    id: r.id,
-    date: r.date,
-    type: r.type,
-    value: numericText(r.value),
-    unit: r.unit,
+  const { fitnessStandards: standards, gradeScale } = unitPolicyOf(
+    ((await ctx.store.prisma.settings.findUnique({ where: { id: 1 } }))?.data ?? {}) as object,
+  );
+  return rows.map((r) => {
+    const score = fitnessScore(standards, r.type, r.unit, r.value);
+    return {
+      id: r.id,
+      date: r.date,
+      type: r.type,
+      value: numericText(r.value),
+      unit: r.unit,
+      score,
+      grade: gradeFor(gradeScale, score),
     notes: r.notes,
-    raw_result: r.raw_result,
-    name: r.soldier.name,
-    military_no: r.soldier.military_no,
-    company: r.soldier.company,
-  }));
+      raw_result: r.raw_result,
+      name: r.soldier.name,
+      military_no: r.soldier.military_no,
+      company: r.soldier.company,
+    };
+  });
 };
 
 const visitor: Builder = async (ctx, f) => {

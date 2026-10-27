@@ -24,7 +24,10 @@ test('expanding medical and security categories preserves existing personnel ent
     .run(randomUUID(), soldier, 'medical', 'Original order', '2026-10-22', 'Original details', user, 3);
   const before = db.prepare('SELECT * FROM soldier_personnel_records').all();
   applyMigrations(db, migrations);
-  assert.deepEqual(db.prepare('SELECT * FROM soldier_personnel_records').all(), before);
+  // Later migrations only add leave times, empty for existing entries.
+  const after = db.prepare('SELECT * FROM soldier_personnel_records').all() as Record<string, unknown>[];
+  assert.deepEqual(after.map(({ start_time: _s, end_time: _e, ...row }) => row), before);
+  assert.ok(after.every((row) => row.start_time === '' && row.end_time === ''));
   assert.deepEqual(db.pragma('foreign_key_check'), []);
 });
 

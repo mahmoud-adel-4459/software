@@ -1,8 +1,9 @@
 import type { Ctx } from '@/common/http/types';
 import { isAdmin } from '@/common/http/access';
 import { listOutlets, listVisitorCategories } from '@/common/store/lookups';
-import { FITNESS_TYPES } from '@/common/utils/catalog';
 import { exitReasonsOf } from '@/modules/settings/exit-reasons';
+import { soldierListsOf } from '@/modules/settings/soldier-lists';
+import { unitPolicyOf } from '@/modules/settings/unit-policy';
 import { catalogForClient } from '@/common/utils/reports';
 import { mergeBackupPolicy } from '@/modules/backup/backup.policy';
 import { mergePrintSettings } from '@/modules/settings/print.settings';
@@ -36,9 +37,12 @@ export async function catalog({ store, actor }: Ctx) {
     ...mergePrintSettings(settings),
     ...memoFields(settings),
   };
+  const policy = unitPolicyOf(settings as object);
   return {
     exitReasons: exitReasonsOf(settings),
-    fitnessTypes: FITNESS_TYPES,
+    ...soldierListsOf(settings as object),
+    ...policy,
+    fitnessTypes: Object.fromEntries(policy.fitnessStandards.map((s) => [s.name, s.unit])),
     reports: catalogForClient(actor.user.role),
     outlets: {
       canteen: outlets.filter((o) => o.kind === 'canteen'),

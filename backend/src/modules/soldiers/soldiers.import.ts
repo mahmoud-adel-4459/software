@@ -7,7 +7,7 @@ import type { Tx } from '@/config/prisma';
 import { newSoldierInput, soldierPhotos, requireSoldierPhotos } from './soldiers.validator';
 import { addAttachment } from './attachments.service';
 
-const FIELDS = ['name', 'militaryNo', 'nationalId', 'rank', 'company', 'unit', 'phone', 'address'];
+const FIELDS = ['name', 'militaryNo', 'nationalId', 'rank', 'militaryRank', 'company', 'unit', 'subUnit', 'phone', 'address'];
 
 /** Bulk soldier registration from Excel; existing military numbers are skipped. */
 export async function importSoldiers(tx: Tx, ctx: Ctx) {
@@ -28,8 +28,10 @@ export async function importSoldiers(tx: Tx, ctx: Ctx) {
         national_id: soldier.nationalId,
         name: soldier.name,
         rank: soldier.rank,
+        military_rank: soldier.militaryRank,
         company: soldier.company,
         unit: soldier.unit,
+        sub_unit: soldier.subUnit,
         phone: soldier.phone,
         address: soldier.address,
         details: soldier.details,

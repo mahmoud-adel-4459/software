@@ -20,10 +20,36 @@ function validateServer(value) {
 const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
 const LONG_RUNNING = /^\/api\/(backup\/(create|import|restore)|import\/(preview|apply))$/;
 
-function callServer(config, identity, token, method, apiPath, data, requestId) {
+// Offline PCs drift apart; requests are stamped with the server's clock, learned from its Date header.
+let clockOffsetMs = 0;
+const SIGNIFICANT_DRIFT_MS = 30 * 1000;
+
+/** Returns true when the server's clock differs noticeably from what was assumed. */
+function learnServerClock(res) {
+  const serverNow = Date.parse(res.headers.date || '');
+  if (!Number.isFinite(serverNow)) return false;
+  const observed = serverNow - Date.now();
+  // The Date header has one-second resolution; ignore that jitter.
+  if (Math.abs(observed - clockOffsetMs) < 2000) return false;
+  const significant = Math.abs(observed - clockOffsetMs) > SIGNIFICANT_DRIFT_MS;
+  clockOffsetMs = observed;
+  return significant;
+}
+
+/** Signed request; a request refused because this PC's clock is off is retried once on the server's time. */
+async function callServer(...args) {
+  try {
+    return await sendSigned(...args);
+  } catch (error) {
+    if (error.status === 401 && error.clockCorrected) return sendSigned(...args);
+    throw error;
+  }
+}
+
+function sendSigned(config, identity, token, method, apiPath, data, requestId) {
   const body = method === 'GET' ? '' : JSON.stringify(data || {});
   const deviceId = identity.id;
-  const timestamp = String(Date.now());
+  const timestamp = String(Date.now() + clockOffsetMs);
   const nonce = randomUUID();
   const signature = sign(
     identity.privateKey,
@@ -59,12 +85,14 @@ function callServer(config, identity, token, method, apiPath, data, requestId) {
           chunks.push(chunk);
         });
         res.on('error', reject);
+        const clockCorrected = learnServerClock(res);
         res.on('end', () => {
           try {
             const result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
             if (res.statusCode < 200 || res.statusCode >= 300) {
               const error = new Error(result.error || 'تعذر تنفيذ الطلب');
               error.status = res.statusCode;
+              error.clockCorrected = clockCorrected;
               reject(error);
             } else resolve(result);
           } catch {

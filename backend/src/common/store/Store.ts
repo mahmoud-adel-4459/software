@@ -10,8 +10,10 @@ const GATE_FIELDS = {
   military_no: true,
   name: true,
   rank: true,
+  military_rank: true,
   company: true,
   unit: true,
+  sub_unit: true,
   status: true,
   version: true,
 } as const;
@@ -40,8 +42,10 @@ export interface CreateSoldierInput {
   nationalId: string;
   name: string;
   rank: string;
+  militaryRank?: string;
   company: string;
   unit: string;
+  subUnit?: string;
   phone: string;
   address: string;
   details?: Record<string, unknown>;
@@ -90,7 +94,7 @@ export class Store {
     const rows = await this.prisma.permit.findMany({
       orderBy: { exit_at: 'desc' },
       take: 200,
-      include: { soldier: { select: { name: true, military_no: true, rank: true, company: true } } },
+      include: { soldier: { select: { name: true, military_no: true, rank: true, military_rank: true, company: true } } },
     });
     return rows.map((p) => ({
       id: p.id,
@@ -191,8 +195,10 @@ export class Store {
         national_id: data.nationalId,
         name: data.name,
         rank: data.rank,
+        military_rank: data.militaryRank ?? '',
         company: data.company,
         unit: data.unit,
+        sub_unit: data.subUnit ?? '',
         phone: data.phone,
         address: data.address,
         details: (data.details ?? {}) as object,

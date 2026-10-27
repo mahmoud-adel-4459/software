@@ -151,9 +151,11 @@ function SoldierStrip({ soldier, photo, onClear }: { soldier: Soldier; photo?: s
           <Typography variant="h3">{soldier.name}</Typography>
           <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', gap: 1, color: tokens.textSecondary }}>
             <span>الرقم <b className="num" style={{ color: tokens.text, fontSize: 18 }}>{soldier.military_no}</b></span>
-            <span>الرتبة <b>{soldier.rank}</b></span>
+            <span>الدرجة <b>{soldier.rank}</b></span>
+            {soldier.military_rank && <span>الرتبة <b>{soldier.military_rank}</b></span>}
             <span>السرية <b>{soldier.company}</b></span>
             <span>الوحدة <b>{soldier.unit}</b></span>
+            {soldier.sub_unit && <span>الوحدة الفرعية <b>{soldier.sub_unit}</b></span>}
           </Stack>
         </Box>
         <Stack spacing={1} sx={{ alignItems: 'flex-end' }}>

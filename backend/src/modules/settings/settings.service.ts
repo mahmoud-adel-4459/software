@@ -6,6 +6,8 @@ import type { Tx } from '@/config/prisma';
 import { parseBackupPolicyFields } from '@/modules/backup/backup.policy';
 import { parsePrintFields } from './print.settings';
 import { parseMemoFields } from './memo.settings';
+import { parseSoldierLists } from './soldier-lists';
+import { parseUnitPolicy } from './unit-policy';
 
 function validateLogo(logo: unknown): string | null {
   if (!logo) return null;
@@ -40,6 +42,8 @@ export async function saveSettings(tx: Tx, data: Input) {
     margins: data.margins,
     ...parsePrintFields(data),
     ...parseMemoFields(data, previous),
+    ...parseSoldierLists(data, previous as Input),
+    ...parseUnitPolicy(data, previous as Input),
     memoLogo: validateLogo(data.memoLogo === undefined ? (previous as Input).memoLogo : data.memoLogo),
     showLogo: Boolean(data.showLogo),
     logo: validateLogo(data.logo),

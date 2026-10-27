@@ -69,7 +69,9 @@ export function ReportsPage() {
     onError: notify.apiError,
   });
   const set = <K extends keyof ReportFilter>(k: K, v: ReportFilter[K]) => setDraft((d) => ({ ...d, [k]: v }));
-  const preset = (p: 'today' | '7d' | 'month') => setDraft((d) => ({ ...d, to: today, from: p === 'today' ? today : p === '7d' ? addDays(today, -6) : startOfMonth(today) }));
+  const preset = (p: 'today' | '7d' | 'month' | 'year') => setDraft((d) => ({
+    ...d, to: today, from: p === 'today' ? today : p === '7d' ? addDays(today, -6) : p === 'month' ? startOfMonth(today) : `${today.slice(0, 4)}-01-01`,
+  }));
   const outlets = meta?.filters.outlet ? catalog.data?.outlets[meta.filters.outletKind ?? 'canteen'] ?? [] : [];
 
   const columns = useMemo<Column<Row>[]>(() => {
@@ -104,6 +106,7 @@ export function ReportsPage() {
                   <Button size="small" variant="tonal" onClick={() => preset('today')}>اليوم</Button>
                   <Button size="small" variant="tonal" onClick={() => preset('7d')}>آخر 7 أيام</Button>
                   <Button size="small" variant="tonal" onClick={() => preset('month')}>هذا الشهر</Button>
+                  <Button size="small" variant="tonal" onClick={() => preset('year')}>هذه السنة</Button>
                 </Stack>
               </>
             )}

@@ -8,10 +8,12 @@ interface Row {
 }
 export const GATE_PROFILE_ROWS: Row[] = [
   { key: 'rank', label: 'الدرجة' },
+  { key: 'military_rank', label: 'الرتبة' },
   { key: 'name', label: 'الاسم' },
   { key: 'military_no', label: 'الرقم العسكري' },
   { key: 'cardNo', label: 'رقم البطاقة', detail: true },
   { key: 'unit', label: 'الوحدة' },
+  { key: 'sub_unit', label: 'الوحدة الفرعية' },
   { key: 'originalUnit', label: 'الوحدة الأصلية', detail: true },
   { key: 'company', label: 'السرية' },
   { key: 'specialty', label: 'التخصص', detail: true },
@@ -58,6 +60,9 @@ export const ATTACHMENT_LABELS: Record<AttachmentKind, string> = {
   tagPhoto: 'صورة البطاقة المعدنية',
   document: 'مستند',
 };
+
+/** Title shown before the name ("رقيب / أحمد"): the rank, or the grade for files saved before ranks existed. */
+export const rankTitle = (soldier: Pick<Soldier, 'rank' | 'military_rank'>): string => soldier.military_rank || soldier.rank;
 
 export function parseDetails(raw: Soldier['details']): SoldierDetails {
   if (!raw) return {};

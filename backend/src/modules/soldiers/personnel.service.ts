@@ -6,7 +6,14 @@ import { lockActiveSoldier } from '@/common/store/lookups';
 import { date as dateOnly, identifier, positiveInt, text } from '@/common/utils/validation';
 import type { Tx } from '@/config/prisma';
 
-const CATEGORIES = ['grant', 'leave', 'penalty', 'reward', 'medical', 'medical_affairs', 'security_report'];
+const CATEGORIES = ['grant', 'leave', 'penalty', 'reward', 'medical', 'medical_affairs', 'security_report', 'security_scan', 'evaluation'];
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const timeOf = (value: unknown, label: string): string => {
+  if (value === undefined || value === null || value === '') return '';
+  requireValue(typeof value === 'string' && TIME.test(value), `${label} غير صالح (ساعة:دقيقة)`);
+  return value;
+};
 
 /** Lists administrative and medical entries only for an administrator viewing the matching soldier. */
 export async function listPersonnelRecords(ctx: Ctx) {
@@ -27,8 +34,16 @@ export async function savePersonnelRecord(tx: Tx, ctx: Ctx, data: Input) {
   const recordDate = dateOnly(data.recordDate);
   const endDate = data.endDate ? dateOnly(data.endDate) : null;
   requireValue(!endDate || endDate >= recordDate, 'تاريخ النهاية يجب ألا يسبق تاريخ البداية');
+  const startTime = timeOf(data.startTime, 'وقت الخروج');
+  const endTime = timeOf(data.endTime, 'وقت العودة');
+  requireValue(!endTime || endDate, 'حدد تاريخ العودة مع وقت العودة');
+  requireValue(
+    !startTime || !endTime || `${endDate}T${endTime}` > `${recordDate}T${startTime}`,
+    'موعد العودة يجب أن يكون بعد موعد الخروج',
+  );
   const fields = { category: data.category, title: text(data.title, 200, true), record_date: recordDate,
-    end_date: endDate, reference: text(data.reference || '', 100), details: text(data.details || '', 5000), updated_at: ctx.store.now() };
+    end_date: endDate, start_time: startTime, end_time: endTime,
+    reference: text(data.reference || '', 100), details: text(data.details || '', 5000), updated_at: ctx.store.now() };
   if (data.id) {
     const old = await tx.soldierPersonnelRecord.findUnique({ where: { id: identifier(data.id) } });
     requireValue(old && !old.deleted && old.soldier_id === soldierId, 'السجل غير موجود في ملف العسكري', 404);

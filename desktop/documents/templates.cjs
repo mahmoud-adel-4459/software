@@ -5,6 +5,8 @@ const { esc, LABELS, cell, money } = require('./format.cjs');
 const { receiptConfig } = require('./geometry.cjs');
 
 const join = (parts) => parts.join('');
+/** "رقيب / أحمد": the rank, or the grade for files saved before ranks existed. */
+const titled = (s) => `${esc(s.military_rank || s.rank)} / ${esc(s.name)}`;
 
 // ---- Thermal receipt building blocks (flex lines, no tables/borders; styled in page.cjs) ----
 /** `label … value` line; empty values are skipped. */
@@ -117,7 +119,7 @@ function testOffice() {
 
 function idCard(soldier, qr) {
   return join([
-    `<section class="card"><img src="${qr}" alt="QR"><div><strong>${esc(soldier.rank)} / ${esc(soldier.name)}</strong>`,
+    `<section class="card"><img src="${qr}" alt="QR"><div><strong>${titled(soldier)}</strong>`,
     `<p>الرقم: ${esc(soldier.military_no)}</p><p>${esc(soldier.company)} · ${esc(soldier.unit)}</p></div></section>`,
   ]);
 }
@@ -140,7 +142,7 @@ function voucher(permit, printedBy = '') {
   const entered = permit.returned_at ? cell('returned_at', permit.returned_at) : 'لم يسجل الدخول بعد';
   return join([
     `<section class="rcpt"><h2>إذن خروج ودخول رقم ${esc(permit.no)}</h2>`,
-    `<div class="t"><strong>${esc(permit.rank)} / ${esc(permit.name)}</strong></div>`,
+    `<div class="t"><strong>${titled(permit)}</strong></div>`,
     sep,
     line('الرقم العسكري', permit.military_no),
     line('السرية', permit.company),
@@ -180,7 +182,7 @@ function canteenReceipt(t, printedBy = '', printNumber = 0) {
     printNumber > 0
       ? `<div class="t"><strong>${printNumber === 1 ? 'أصل الإيصال' : `نسخة رقم ${esc(printNumber - 1)}`}</strong></div>`
       : '',
-    `<div class="t"><strong>${esc(t.rank)} / ${esc(t.name)}</strong></div>`,
+    `<div class="t"><strong>${titled(t)}</strong></div>`,
     sep,
     line('الرقم العسكري', t.military_no),
     line('السرية', t.company),
@@ -208,7 +210,7 @@ function canteenStatement({ soldier, transactions, totalCents, month, outletName
   const unit = soldier.unit ? ` · الوحدة: ${esc(soldier.unit)}` : '';
   return join([
     `<section class="voucher canteen-statement"><h2>كشف حساب ${esc(place)} — <bdi dir="ltr">${esc(month)}</bdi></h2>`,
-    `<p>${esc(soldier.rank)} / ${esc(soldier.name)}</p>`,
+    `<p>${titled(soldier)}</p>`,
     `<p>الرقم العسكري: ${esc(soldier.military_no)} · السرية: ${esc(soldier.company)}${unit}</p>`,
     '<table><thead><tr><th>التاريخ</th><th>المبلغ (ج.م)</th><th>ملاحظات</th><th>الحالة</th></tr></thead>',
     `<tbody>${rows || '<tr><td colspan="4">لا توجد حركات</td></tr>'}</tbody></table>`,
@@ -236,11 +238,35 @@ function dailyReportHtml(report) {
   const { gate: g, visitors: v, canteen: cn, buffet: bf, fitness: ft } = report.activity;
   const foodRow = (r) => row([cell('at', r.at), r.name, cell('amount_cents', r.amount_cents), r.notes || '']);
   const foodHead = ['الوقت', 'العسكري', 'المبلغ', 'ملاحظات'];
+  const period = report.period || 'day';
+  const title = { day: 'التقرير اليومي الشامل', month: 'التقرير الشهري الشامل', year: 'التقرير السنوي الشامل' }[period];
+  const span = period === 'day' ? report.date : `${report.from} — ${report.to}`;
+  const personnel = report.activity.personnel || {};
+  const timeline = report.activity.gateTimeline || [];
   return [
-    `<h1>التقرير اليومي الشامل — ${esc(report.unit.name)}</h1>` +
-      `<p>${esc(report.unit.parentFormation || '')} · ${esc(report.date)} · ${esc(cell('at', report.generatedAt))}</p>`,
+    `<h1>${title} — ${esc(report.unit.name)}</h1>` +
+      `<p>${esc(report.unit.parentFormation || '')} · <bdi dir="ltr">${esc(span)}</bdi> · ${esc(cell('at', report.generatedAt))}</p>`,
     `<p><strong>الأفراد:</strong> نشط ${s.total} (داخل ${s.inside} · خارج ${s.outside}) · مؤرشف ${s.archived} · تصاريح خارج ${p.activeOutside} (متأخر ${p.late})</p>`,
-    `<p><strong>نشاط اليوم:</strong> بوابة ${g.total} (دخول ${g.entries} · خروج ${g.exits}) · زوار ${v.checkIns} · كانتين ${money(cn.totalCents)} ج.م (${cn.transactions}) · بوفيه ${money(bf.totalCents)} ج.م (${bf.transactions}) · لياقة ${ft.records}</p>`,
+    `<p><strong>نشاط الفترة:</strong> بوابة ${g.total} (دخول ${g.entries} · خروج ${g.exits}) · زوار ${v.checkIns} · كانتين ${money(cn.totalCents)} ج.م (${cn.transactions}) · بوفيه ${money(bf.totalCents)} ج.م (${bf.transactions}) · لياقة ${ft.records}${ft.averageScore == null ? '' : ` (متوسط ${ft.averageScore}% — ${esc(ft.averageGrade || '')})`}</p>`,
+    Object.keys(personnel).length
+      ? `<p><strong>ملفات العسكريين:</strong> ${Object.entries(personnel)
+          .map(([k, n]) => `${esc(PERSONNEL_LABELS[k] || k)} ${n}`)
+          .join(' · ')}</p>`
+      : '',
+    timeline.length
+      ? section(
+          period === 'month' ? 'حركة البوابة حسب اليوم' : 'حركة البوابة حسب الشهر',
+          [period === 'month' ? 'اليوم' : 'الشهر', 'خروج', 'دخول'],
+          timeline.filter((t) => t.entries || t.exits).map((t) => row([t.label, t.exits, t.entries])),
+        )
+      : '',
+    ft.byType && ft.byType.length
+      ? section(
+          'اللياقة حسب الاختبار',
+          ['الاختبار', 'عدد النتائج', 'متوسط النسبة'],
+          ft.byType.map((t) => row([t.type, t.count, t.averageScore == null ? '—' : `${t.averageScore}%`])),
+        )
+      : '',
     section(
       'السرية — أفراد نشطون',
       ['السرية', 'العدد'],
@@ -263,7 +289,107 @@ function dailyReportHtml(report) {
     ),
     section('كانتين', foodHead, cn.recent.slice(0, 40).map(foodRow)),
     section('بوفيه', foodHead, bf.recent.slice(0, 40).map(foodRow)),
-  ].join('\n  ');
+  ]
+    .filter(Boolean)
+    .join('\n  ');
+}
+
+// ---- Soldier file --------------------------------------------------------------------------
+
+const PERSONNEL_LABELS = {
+  leave: 'الإجازات',
+  grant: 'المنح',
+  reward: 'المكافآت',
+  penalty: 'الجزاءات والغرامات',
+  medical: 'الأوامر الطبية',
+  medical_affairs: 'الموقف الطبي',
+  security_scan: 'المسح الأمني',
+  security_report: 'تقرير ضابط أمن الوحدة',
+  evaluation: 'التقييم النهائي',
+};
+
+const at = (date, time) => (date ? `${date}${time ? ` ${time}` : ''}` : '—');
+
+function recordsSection(category, records) {
+  const mine = records.filter((r) => r.category === category);
+  if (category === 'security_report' || category === 'security_scan') {
+    if (!mine.length) return section(PERSONNEL_LABELS[category], ['التاريخ', 'البيان'], []);
+    return (
+      `<h2>${esc(PERSONNEL_LABELS[category])}</h2>` +
+      mine
+        .map(
+          (r) =>
+            `<p><strong>${esc(r.record_date)} — ${esc(r.title)}</strong>${r.reference ? ` (مرجع: ${esc(r.reference)})` : ''}</p>` +
+            `<p style="white-space:pre-line">${esc(r.details || '—')}</p>`,
+        )
+        .join('')
+    );
+  }
+  const leave = category === 'leave';
+  return section(
+    PERSONNEL_LABELS[category],
+    [
+      leave ? 'الخروج' : 'التاريخ',
+      leave ? 'العودة' : 'النهاية',
+      category === 'evaluation' ? 'التقدير' : 'البيان',
+      'المرجع',
+      'التفاصيل',
+    ],
+    mine.map((r) =>
+      row([at(r.record_date, r.start_time), at(r.end_date, r.end_time), r.title, r.reference || '—', r.details || '—']),
+    ),
+  );
+}
+
+function evaluationSection(evaluation) {
+  if (!evaluation) return '';
+  const pct = (v) => (v == null ? '—' : `${v}%`);
+  return (
+    section(
+      'اللياقة البدنية',
+      ['الاختبار', 'المعيار', 'آخر نتيجة', 'النسبة'],
+      evaluation.tests.map((t) =>
+        row([t.name, `${t.target} ${t.unit}`, t.value == null ? '—' : `${t.value} ${t.unit}`, pct(t.score)]),
+      ),
+    ) +
+    `<p><strong>متوسط اللياقة:</strong> ${pct(evaluation.average)} · <strong>التقدير المقترح:</strong> ${esc(evaluation.suggestedGrade || '—')} · ` +
+    `<strong>التقدير النهائي:</strong> ${esc(evaluation.finalGrade ? evaluation.finalGrade.grade : 'لم يُحدد')}</p>`
+  );
+}
+
+/** Soldier file for the memo layout: identity, evaluation and every section — or one section only. */
+function soldierFile({ soldier, records = [], evaluation, category, printedBy = '' }) {
+  const { gateProfileRows } = require('../../shared/soldier-profile.cjs');
+  const identity = gateProfileRows(soldier).filter((r) => r.value && r.value !== '—');
+  const pairs = [];
+  for (let i = 0; i < identity.length; i += 2) {
+    const [a, b] = [identity[i], identity[i + 1]];
+    pairs.push(
+      `<tr><th>${esc(a.label)}</th><td>${esc(a.value)}</td>${b ? `<th>${esc(b.label)}</th><td>${esc(b.value)}</td>` : '<td colspan="2"></td>'}</tr>`,
+    );
+  }
+  const heading = category ? `${PERSONNEL_LABELS[category]} — ${titled(soldier)}` : `ملف العسكري — ${titled(soldier)}`;
+  const used = Object.keys(PERSONNEL_LABELS).filter((c) => records.some((r) => r.category === c));
+  const empty = Object.keys(PERSONNEL_LABELS).filter((c) => !used.includes(c));
+  const sections = category
+    ? [category === 'evaluation' ? evaluationSection(evaluation) : '', recordsSection(category, records)]
+    : [
+        evaluationSection(evaluation),
+        ...used.map((c) => recordsSection(c, records)),
+        empty.length
+          ? `<p><strong>لا توجد سجلات في:</strong> ${empty.map((c) => esc(PERSONNEL_LABELS[c])).join('، ')}</p>`
+          : '',
+      ];
+  return [
+    `<h2>${esc(heading)}</h2>`,
+    `<table><tbody>${pairs.join('')}</tbody></table>`,
+    ...sections,
+    printedBy
+      ? `<p>طُبع بواسطة: <bdi>${esc(printedBy)}</bdi> · <bdi>${esc(cell('at', new Date().toISOString()))}</bdi></p>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n  ');
 }
 
 module.exports = {
@@ -277,4 +403,5 @@ module.exports = {
   canteenReceipt,
   canteenStatement,
   dailyReportHtml,
+  soldierFile,
 };

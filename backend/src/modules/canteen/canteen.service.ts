@@ -46,7 +46,7 @@ export async function getTransaction(ctx: Ctx) {
   const t = await ctx.store.prisma.canteenTransaction.findUnique({
     where: { id },
     include: {
-      soldier: { select: { name: true, military_no: true, rank: true, company: true, unit: true } },
+      soldier: { select: { name: true, military_no: true, rank: true, military_rank: true, company: true, unit: true, sub_unit: true } },
       outlet: { select: { name: true, kind: true } },
       creator: { select: { name: true } },
       reversal: { select: { id: true } },

@@ -1,6 +1,7 @@
 import ArchiveIcon from '@mui/icons-material/Inventory2Outlined';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import QrIcon from '@mui/icons-material/QrCode2Outlined';
+import { DocButtons } from '@/components/DocButtons';
 import SaveAltIcon from '@mui/icons-material/SaveAltOutlined';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
@@ -21,6 +22,7 @@ import { ATTACHMENT_LABELS, gateProfileRows } from '@/lib/soldierProfile';
 import { PhotoSlots, SoldierQrDialog, useSavedPhotos, type PendingPhotos } from './shared';
 import type { AttachmentMeta } from '@/api/types';
 import { PersonnelRecords } from './PersonnelRecords';
+import { EvaluationCard } from './EvaluationCard';
 
 /** Soldier file: details, QR, photos, documents and archive. */
 export function SoldierProfilePage() {
@@ -102,6 +104,7 @@ export function SoldierProfilePage() {
       <PageHeader title={`ملف ${soldier.name}`} description="الحقول الشخصية والمرفقات المركزية."
         actions={<>
           <Button variant="tonal" startIcon={<QrIcon />} onClick={() => setQr(true)}>QR</Button>
+          <DocButtons size="medium" doc={{ type: 'soldier-file', soldierId: soldier.id }} />
           <Button variant="tonal" startIcon={<ArchiveIcon />} onClick={() => setConfirm(true)}>{soldier.archived ? 'إلغاء الأرشفة' : 'أرشفة الملف'}</Button>
           <Button variant="contained" startIcon={<EditIcon />} onClick={() => navigate(`/soldiers/${soldier.id}/edit`)}>تعديل</Button>
         </>} />
@@ -117,6 +120,7 @@ export function SoldierProfilePage() {
           </SectionCard>
         </Grid>
       </Grid>
+      <EvaluationCard soldierId={soldier.id} />
       <PersonnelRecords key={soldier.id} soldierId={soldier.id} archived={soldier.archived} />
       <SectionCard title="صور العسكري" subtitle="PNG أو JPEG">
         <PhotoSlots saved={saved.data} pending={pending} onPick={pick} onClear={(k) => setPending((p) => { const n = { ...p }; delete n[k]; return n; })} />

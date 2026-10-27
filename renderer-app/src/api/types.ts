@@ -57,9 +57,13 @@ export interface Soldier {
   id: string;
   military_no: string;
   name: string;
+  /** الدرجة */
   rank: string;
+  /** الرتبة */
+  military_rank?: string;
   company: string;
   unit: string;
+  sub_unit?: string;
   status: ExitStatus;
   version: number;
   national_id?: string;
@@ -95,7 +99,7 @@ export interface SoldierRecord {
   attachments: AttachmentMeta[];
 }
 
-export type PersonnelCategory = 'grant' | 'leave' | 'penalty' | 'reward' | 'medical' | 'medical_affairs' | 'security_report';
+export type PersonnelCategory = 'grant' | 'leave' | 'penalty' | 'reward' | 'medical' | 'medical_affairs' | 'security_report' | 'security_scan' | 'evaluation';
 export interface PersonnelRecord {
   id: string;
   soldier_id: string;
@@ -103,6 +107,9 @@ export interface PersonnelRecord {
   title: string;
   record_date: string;
   end_date: string | null;
+  /** HH:MM — leave exit / return time */
+  start_time?: string;
+  end_time?: string;
   reference: string;
   details: string;
   version: number;
@@ -245,6 +252,11 @@ export interface ReportColumnMeta {
 }
 export interface Catalog {
   exitReasons: string[];
+  soldierGrades: string[];
+  soldierRanks: string[];
+  gateMinMinutes?: number;
+  fitnessStandards?: FitnessStandard[];
+  gradeScale?: GradeBand[];
   fitnessTypes: Record<string, string>;
   reports: ReportColumnMeta[];
   outlets: { canteen: Outlet[]; buffet: Outlet[] };
@@ -298,6 +310,27 @@ export interface FitnessRecord {
   date: string;
   notes: string;
   raw_result: string | null;
+  /** Percentage of the Settings standard (null when the test has no standard). */
+  score?: number | null;
+}
+
+export interface FitnessStandard {
+  name: string;
+  unit: string;
+  target: number;
+  better: 'higher' | 'lower';
+}
+export interface GradeBand {
+  label: string;
+  min: number;
+}
+export interface SoldierEvaluation {
+  tests: (FitnessStandard & { value: string | null; date: string | null; score: number | null })[];
+  testedCount: number;
+  average: number | null;
+  suggestedGrade: string | null;
+  finalGrade: { grade: string; date: string; details: string } | null;
+  gradeLabels: string[];
 }
 
 export interface UserRow {
@@ -349,8 +382,12 @@ export interface PickedFile {
   content: string;
 }
 
+export type ReportPeriod = 'day' | 'month' | 'year';
 export interface DailyReport {
   date: string;
+  period?: ReportPeriod;
+  from?: string;
+  to?: string;
   generatedAt: string;
   unit: { name: string; parentFormation: string };
   snapshot: {
@@ -378,9 +415,13 @@ export interface DailyReport {
     buffet: FoodActivity;
     fitness: {
       records: number;
-      byType: { type: string; count: number }[];
-      recent: { date: string; type: string; value: number; unit: string; name: string; military_no: string }[];
+      averageScore?: number | null;
+      averageGrade?: string | null;
+      byType: { type: string; count: number; averageScore?: number | null }[];
+      recent: { date: string; type: string; value: number; unit: string; score?: number | null; name: string; military_no: string }[];
     };
+    gateTimeline?: { label: string; entries: number; exits: number }[];
+    personnel?: Partial<Record<PersonnelCategory, number>>;
   };
   audit: { at: string; action: string; username: string }[];
 }
@@ -472,6 +513,9 @@ export interface DocumentArg {
   month?: string;
   outletId?: string;
   date?: string;
+  period?: ReportPeriod;
+  /** soldier-file: print one section only */
+  category?: PersonnelCategory;
 }
 export interface DesktopBridge {
   info(): Promise<BridgeResult<AppInfo>>;

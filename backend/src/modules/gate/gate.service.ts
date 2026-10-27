@@ -5,9 +5,19 @@ import type { Ctx, Input } from '@/common/http/types';
 import { lockSoldier } from '@/common/store/lookups';
 import { identifier, text } from '@/common/utils/validation';
 import type { Tx } from '@/config/prisma';
+import { unitPolicyOf } from '@/modules/settings/unit-policy';
 import { MILITARY_NO, type MovementInput } from './gate.validator';
 
 const PHOTO_KINDS = ['photo', 'idPhoto', 'carnetFront', 'carnetBack'];
+
+/** 90 → "ساعة و30 دقيقة". */
+function durationText(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const hours = h === 0 ? '' : h === 1 ? 'ساعة' : h === 2 ? 'ساعتين' : `${h} ساعات`;
+  const mins = m === 0 ? '' : `${m} دقيقة`;
+  return [hours, mins].filter(Boolean).join(' و') || '0 دقيقة';
+}
 
 /** Soldier + latest photos for the gate screen after a QR scan or manual entry. */
 export async function findSoldierForGate(ctx: Ctx) {
@@ -21,8 +31,10 @@ export async function findSoldierForGate(ctx: Ctx) {
       military_no: true,
       name: true,
       rank: true,
+      military_rank: true,
       company: true,
       unit: true,
+      sub_unit: true,
       phone: true,
       address: true,
       status: true,
@@ -43,7 +55,7 @@ export async function findSoldierForGate(ctx: Ctx) {
 export async function getPermit(ctx: Ctx) {
   const row = await ctx.store.prisma.permit.findUnique({
     where: { id: identifier(param(ctx, 'id')) },
-    include: { soldier: { select: { name: true, military_no: true, rank: true, company: true } } },
+    include: { soldier: { select: { name: true, military_no: true, rank: true, military_rank: true, company: true } } },
   });
   requireValue(row, 'التصريح غير موجود', 404);
   return {
@@ -78,10 +90,16 @@ export async function recordMovement(tx: Tx, ctx: Pick<Ctx, 'actor' | 'requestId
   requireValue(soldier, 'العسكري غير موجود', 404);
   requireValue(!soldier.archived, 'ملف العسكري مؤرشف', 409);
   const now = store.now();
+  const { gateMinMinutes } = unitPolicyOf(((await tx.settings.findUnique({ where: { id: 1 } }))?.data ?? {}) as object);
+  const minGapMs = gateMinMinutes * 60 * 1000;
   let permit;
   if (data.kind === 'exit') {
     requireValue(soldier.status === 'in', 'العسكري مسجل خارج الوحدة بالفعل', 409);
     requireValue(Date.parse(data.expectedReturn!) > now.getTime(), 'موعد العودة يجب أن يكون في المستقبل');
+    requireValue(
+      Date.parse(data.expectedReturn!) >= now.getTime() + minGapMs,
+      `موعد العودة يجب أن يكون بعد ${durationText(gateMinMinutes)} على الأقل من الخروج`,
+    );
     permit = await tx.permit.create({
       data: {
         id: randomUUID(),
@@ -98,6 +116,12 @@ export async function recordMovement(tx: Tx, ctx: Pick<Ctx, 'actor' | 'requestId
     requireValue(soldier.status === 'out', 'العسكري مسجل داخل الوحدة بالفعل', 409);
     const active = await tx.permit.findFirst({ where: { soldier_id: soldier.id, returned_at: null, voided: false } });
     requireValue(active, 'لا يوجد تصريح نشط؛ اطلب مراجعة المسؤول', 409);
+    const elapsedMs = now.getTime() - active.exit_at.getTime();
+    requireValue(
+      elapsedMs >= minGapMs,
+      `لا يمكن تسجيل العودة قبل مرور ${durationText(gateMinMinutes)} على الخروج؛ مضى ${durationText(Math.floor(elapsedMs / 60000))} فقط. لتصحيح خروج بالخطأ اطلب من المسؤول «عكس الحركة».`,
+      409,
+    );
     permit = await tx.permit.update({ where: { id: active.id }, data: { returned_at: now, entry_notes: data.notes } });
   }
   await tx.soldier.update({

@@ -1,7 +1,8 @@
 import { requireValue } from '@/common/errors/AppError';
-import { cairoHour, dayStart, nextDay } from '@/common/utils/time';
+import { cairoDate, cairoHour, dayStart, nextDay } from '@/common/utils/time';
 import type { Store } from '@/common/store/Store';
 import { dateOnly, numericText } from '@/modules/fitness/fitness.service';
+import { fitnessScore, gradeFor, unitPolicyOf, type GradeBand } from '@/modules/settings/unit-policy';
 
 interface FoodRow {
   at: Date;
@@ -139,35 +140,85 @@ function tallyVisitors(rows: VisitRow[]) {
 }
 
 function tallyFitness(
-  rows: { date: Date; type: string; value: number | null; unit: string; name: string; military_no: string }[],
+  rows: { date: Date; type: string; value: number | null; unit: string; name: string; military_no: string; score: number | null }[],
+  gradeScale: GradeBand[],
 ) {
-  const byType = new Map<string, number>();
-  for (const r of rows) byType.set(r.type, (byType.get(r.type) || 0) + 1);
+  const byType = new Map<string, { count: number; scores: number[] }>();
+  for (const r of rows) {
+    const t = byType.get(r.type) || { count: 0, scores: [] };
+    t.count++;
+    if (r.score !== null) t.scores.push(r.score);
+    byType.set(r.type, t);
+  }
+  const mean = (values: number[]) => (values.length ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10 : null);
+  const averageScore = mean(rows.map((r) => r.score).filter((s): s is number => s !== null));
   return {
     records: rows.length,
-    byType: [...byType.entries()].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count),
+    averageScore,
+    averageGrade: gradeFor(gradeScale, averageScore),
+    byType: [...byType.entries()]
+      .map(([type, t]) => ({ type, count: t.count, averageScore: mean(t.scores) }))
+      .sort((a, b) => b.count - a.count),
     recent: rows.slice(0, 20).map((r) => ({
       date: r.date,
       type: r.type,
       value: numericText(r.value),
       unit: r.unit,
+      score: r.score,
       name: r.name,
       military_no: r.military_no,
     })),
   };
 }
 
-/** Day summary (Cairo calendar day): snapshot of the unit plus the day's gate, food, visitor and fitness activity. */
-export async function buildDailyReport(store: Store, date: string) {
+export type ReportPeriod = 'day' | 'month' | 'year';
+export const REPORT_PERIODS: ReportPeriod[] = ['day', 'month', 'year'];
+
+/** First and last-plus-one calendar day (YYYY-MM-DD) of the day, month or year containing `date`. */
+function periodBounds(date: string, period: ReportPeriod): { first: string; afterLast: string } {
+  const [y = 0, m = 1] = date.split('-').map(Number);
+  if (period === 'day') return { first: date, afterLast: nextDay(date) };
+  if (period === 'month') {
+    const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    return { first: `${date.slice(0, 7)}-01`, afterLast: next };
+  }
+  return { first: `${y}-01-01`, afterLast: `${y + 1}-01-01` };
+}
+
+/** Gate movements per day (month) or per month (year), Cairo calendar. */
+function gateTimeline(events: { kind: string; at: Date }[], period: ReportPeriod, first: string, afterLast: string) {
+  if (period === 'day') return [];
+  const buckets = new Map<string, { label: string; entries: number; exits: number }>();
+  for (let d = first; d < afterLast; d = nextDay(d)) {
+    const key = period === 'month' ? d : d.slice(0, 7);
+    if (!buckets.has(key)) buckets.set(key, { label: period === 'month' ? d.slice(8) : d.slice(5, 7), entries: 0, exits: 0 });
+  }
+  for (const e of events) {
+    const d = cairoDate(e.at);
+    const bucket = buckets.get(period === 'month' ? d : d.slice(0, 7));
+    if (!bucket) continue;
+    if (e.kind === 'entry') bucket.entries++;
+    else bucket.exits++;
+  }
+  return [...buckets.values()];
+}
+
+/**
+ * Comprehensive summary of a Cairo calendar day, month or year: snapshot of the unit plus the period's gate,
+ * food, visitor, fitness and soldier-file activity.
+ */
+export async function buildDailyReport(store: Store, date: string, period: ReportPeriod = 'day') {
   requireValue(typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date), 'تاريخ غير صالح');
-  const start = new Date(dayStart(date));
-  const end = new Date(dayStart(nextDay(date)));
+  requireValue(REPORT_PERIODS.includes(period), 'فترة التقرير غير صالحة');
+  const { first, afterLast } = periodBounds(date, period);
+  const start = new Date(dayStart(first));
+  const end = new Date(dayStart(afterLast));
   const range = { gte: start, lt: end };
   const prisma = store.prisma;
   const now = store.now();
 
   const settings = ((await prisma.settings.findUnique({ where: { id: 1 } }))?.data ?? {}) as Record<string, string>;
-  const [soldierRows, activeOutside, late, gateRows, foodRows, visitorRows, fitnessRows, outletRows, auditRows] =
+  const [soldierRows, activeOutside, late, gateRows, foodRows, visitorRows, fitnessRows, outletRows, auditRows, personnelRows] =
     await Promise.all([
       prisma.soldier.findMany({ select: { status: true, archived: true, company: true } }),
       prisma.permit.count({ where: { returned_at: null, voided: false } }),
@@ -191,8 +242,9 @@ export async function buildDailyReport(store: Store, date: string) {
         orderBy: { check_in: 'desc' },
       }),
       prisma.fitnessRecord.findMany({
-        where: { date: dateOnly(date) },
+        where: { date: { gte: dateOnly(first), lt: dateOnly(afterLast) } },
         include: { soldier: { select: { name: true, military_no: true } } },
+        orderBy: { date: 'desc' },
       }),
       prisma.foodOutlet.groupBy({ by: ['kind'], where: { disabled: false }, _count: { _all: true } }),
       prisma.auditLog.findMany({
@@ -201,7 +253,13 @@ export async function buildDailyReport(store: Store, date: string) {
         orderBy: { at: 'desc' },
         take: 15,
       }),
+      prisma.soldierPersonnelRecord.groupBy({
+        by: ['category'],
+        where: { deleted: false, record_date: { gte: first, lt: afterLast } },
+        _count: { _all: true },
+      }),
     ]);
+  const policy = unitPolicyOf(settings);
 
   const outlets: Record<string, number> = { canteen: 0, buffet: 0 };
   for (const r of outletRows) outlets[r.kind] = r._count._all;
@@ -219,6 +277,9 @@ export async function buildDailyReport(store: Store, date: string) {
 
   return {
     date,
+    period,
+    from: first,
+    to: new Date(Date.parse(`${afterLast}T12:00:00Z`) - 86400000).toISOString().slice(0, 10),
     generatedAt: now.toISOString(),
     unit: { name: settings.unitName || 'الوحدة', parentFormation: settings.parentFormation || '' },
     snapshot: {
@@ -256,8 +317,12 @@ export async function buildDailyReport(store: Store, date: string) {
           unit: r.unit,
           name: r.soldier.name,
           military_no: r.soldier.military_no,
+          score: fitnessScore(policy.fitnessStandards, r.type, r.unit, r.value),
         })),
+        policy.gradeScale,
       ),
+      gateTimeline: gateTimeline(gateRows, period, first, afterLast),
+      personnel: Object.fromEntries(personnelRows.map((r) => [r.category, r._count._all])),
     },
     audit: auditRows.map((r) => ({ at: r.at, action: r.action, username: r.user.name })),
   };

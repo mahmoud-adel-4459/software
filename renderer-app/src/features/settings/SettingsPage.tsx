@@ -30,6 +30,8 @@ import { ReceiptPrinterCard, receiptFrom } from './ReceiptPrinterCard';
 import { ExitReasonsCard } from './ExitReasonsCard';
 import { MemoSettingsCard } from './MemoSettingsCard';
 import { NetworkCard } from './NetworkCard';
+import { SoldierListsCard } from './SoldierListsCard';
+import { UnitPolicyCard } from './UnitPolicyCard';
 
 const schema = z.object({
   unitName: z.string().trim().min(1, 'اسم الوحدة مطلوب').max(100),
@@ -80,6 +82,9 @@ export function SettingsPage() {
       <OutletsBlock kind="buffet" />
       <CategoriesBlock />
       <ExitReasonsCard key={catalog.data.settings.version} settings={catalog.data.settings} reasons={catalog.data.exitReasons} />
+      <SoldierListsCard key={`lists-${catalog.data.settings.version}`} settings={catalog.data.settings} grades={catalog.data.soldierGrades} ranks={catalog.data.soldierRanks} />
+      <UnitPolicyCard key={`policy-${catalog.data.settings.version}`} settings={catalog.data.settings}
+        gateMinMinutes={catalog.data.gateMinMinutes ?? 0} standards={catalog.data.fitnessStandards ?? []} gradeScale={catalog.data.gradeScale ?? []} />
     </>
   );
 }

@@ -51,6 +51,8 @@ export function createCatalog(role: Role, outlets: Outlet[] = structuredClone(OU
   ];
   return {
     exitReasons: ['إجازة اعتيادية', 'إجازة عارضة', 'علاج بالمستشفى', 'مأمورية رسمية', 'كشف طبي'],
+    soldierGrades: ['مجند', 'متطوع', 'ضابط صف', 'ضابط'],
+    soldierRanks: ['عسكري', 'عريف', 'رقيب'],
     fitnessTypes: { 'جري 3 كم': 'ثانية', ضغط: 'مرة' },
     reports: role === 'clerk' ? reports.filter((r) => r.id === 'canteen' || r.id === 'buffet') : reports,
     outlets: { canteen: outlets.filter((o) => o.kind === 'canteen' && !o.disabled), buffet: outlets.filter((o) => o.kind === 'buffet' && !o.disabled) },
@@ -70,7 +72,13 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
   const savedSettings: Record<string, unknown> = {};
   const catalog = () => {
     const c = createCatalog(role, outlets);
-    return { ...c, exitReasons: (savedSettings.exitReasons as string[] | undefined) ?? c.exitReasons, settings: { ...c.settings, ...savedSettings } as Catalog['settings'] };
+    return {
+      ...c,
+      exitReasons: (savedSettings.exitReasons as string[] | undefined) ?? c.exitReasons,
+      soldierGrades: (savedSettings.soldierGrades as string[] | undefined) ?? c.soldierGrades,
+      soldierRanks: (savedSettings.soldierRanks as string[] | undefined) ?? c.soldierRanks,
+      settings: { ...c.settings, ...savedSettings } as Catalog['settings'],
+    };
   };
   const state = {
     soldiers: structuredClone(SOLDIER_FIXTURES),
@@ -182,7 +190,7 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
           return ok({ cardNo: card.cardNo });
         }
         case '/api/soldiers': {
-          const s: Soldier = { id: uuid(), military_no: String(body.militaryNo), name: String(body.name), rank: String(body.rank), company: String(body.company), unit: String(body.unit), status: 'in', version: 1, national_id: String(body.nationalId), archived: false, details: body.details as Soldier['details'] };
+          const s: Soldier = { id: uuid(), military_no: String(body.militaryNo), name: String(body.name), rank: String(body.rank), military_rank: String(body.militaryRank ?? ''), company: String(body.company), unit: String(body.unit), sub_unit: String(body.subUnit ?? ''), status: 'in', version: 1, national_id: String(body.nationalId), archived: false, details: body.details as Soldier['details'] };
           state.soldiers.push(s);
           return ok({ id: s.id });
         }

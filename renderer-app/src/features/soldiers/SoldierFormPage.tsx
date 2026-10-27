@@ -14,7 +14,7 @@ import { api } from '@/api/endpoints';
 import { bridge, post, unwrap } from '@/api/client';
 import type { AttachmentKind, Soldier, SoldierDetails } from '@/api/types';
 import { PageHeader, SectionCard } from '@/components/basic';
-import { RhfText } from '@/components/Fields';
+import { RhfSelect, RhfText } from '@/components/Fields';
 import { notify } from '@/lib/notify';
 import { useCatalog } from '@/lib/queries';
 import { DATE_DETAIL_KEYS, DETAIL_FIELDS, NUMBER_DETAIL_KEYS, PHOTO_KINDS, parseDetails } from '@/lib/soldierProfile';
@@ -30,13 +30,19 @@ const schema = z.object({
   militaryNo: z.string().trim().regex(/^\d{6,30}$/, 'الرقم العسكري من 6 إلى 30 رقمًا'),
   nationalId: z.string().trim().regex(/^\d{14}$/, 'الرقم القومي 14 رقمًا'),
   rank: z.string().trim().min(1, 'الدرجة مطلوبة'),
+  militaryRank: z.string().trim().min(1, 'الرتبة مطلوبة'),
   company: z.string().trim().min(1, 'السرية مطلوبة'),
   unit: z.string().trim().min(1, 'الوحدة مطلوبة'),
+  subUnit: z.string().trim().max(100),
   phone: z.string().trim().min(1, 'رقم الهاتف مطلوب').max(30),
   address: z.string().trim().min(1, 'العنوان المدني مطلوب').max(500),
   ...detailShape,
 });
 type Values = z.infer<typeof schema>;
+
+/** Options from the Settings list; a stored value that was later removed from the list stays selectable. */
+const choices = (list: string[] = [], current?: string) =>
+  [...list, ...(current && !list.includes(current) ? [current] : [])].map((value) => ({ value, label: value }));
 
 /** Add (no :id) or edit a soldier; pending photos upload after the file is saved. */
 export function SoldierFormPage() {
@@ -61,7 +67,8 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
     resolver: zodResolver(schema),
     defaultValues: {
       name: soldier?.name ?? '', militaryNo: soldier?.military_no ?? '', nationalId: soldier?.national_id ?? '',
-      rank: soldier?.rank ?? 'جندي', company: soldier?.company ?? '', unit: soldier?.unit ?? catalog.data?.settings.unitName ?? '',
+      rank: soldier?.rank ?? '', militaryRank: soldier?.military_rank ?? '',
+      company: soldier?.company ?? '', unit: soldier?.unit ?? catalog.data?.settings.unitName ?? '', subUnit: soldier?.sub_unit ?? '',
       phone: soldier?.phone ?? '', address: soldier?.address ?? '',
       ...Object.fromEntries(Object.keys(DETAIL_FIELDS).map((k) => [k, d[k as keyof SoldierDetails] ?? ''])),
     },
@@ -95,7 +102,8 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
     }
     const { phone, address, ...core } = values;
     const body = {
-      name: core.name, militaryNo: core.militaryNo, nationalId: core.nationalId, rank: core.rank, company: core.company, unit: core.unit,
+      name: core.name, militaryNo: core.militaryNo, nationalId: core.nationalId, rank: core.rank, militaryRank: core.militaryRank,
+      company: core.company, unit: core.unit, subUnit: core.subUnit,
       phone, address, details,
       photos: Object.entries(pending).filter(([, file]) => Boolean(file)).map(([kind, file]) => ({ ...file, kind })),
       ...(soldier ? { id: soldier.id, version: soldier.version } : {}),
@@ -120,8 +128,21 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
       <PageHeader title={soldier ? 'تعديل بيانات العسكري' : 'إضافة عسكري'} description="جميع البيانات والصور الأربع إلزامية. البيانات والصور تُحفظ معًا بعد اكتمال الملف." />
       <SectionCard title="البيانات الأساسية">
         <Grid container spacing={2}>
-          {([['name', 'الاسم الرباعي'], ['militaryNo', 'الرقم العسكري'], ['nationalId', 'الرقم القومي'], ['rank', 'الدرجة'], ['company', 'السرية'], ['unit', 'الوحدة'], ['phone', 'رقم الهاتف'], ['address', 'العنوان المدني']] as const).map(([n, l]) => (
-            <Grid key={n} size={{ xs: 12, sm: 6, md: 4 }}><RhfText required control={control} name={n} label={l} slotProps={{ htmlInput: { dir: n === 'militaryNo' || n === 'nationalId' || n === 'phone' ? 'ltr' : undefined } }} /></Grid>
+          {([['name', 'الاسم الرباعي'], ['militaryNo', 'الرقم العسكري'], ['nationalId', 'الرقم القومي']] as const).map(([n, l]) => (
+            <Grid key={n} size={{ xs: 12, sm: 6, md: 4 }}><RhfText required control={control} name={n} label={l} slotProps={{ htmlInput: { dir: n === 'name' ? undefined : 'ltr' } }} /></Grid>
+          ))}
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <RhfSelect required control={control} name="rank" label="الدرجة" options={choices(catalog.data?.soldierGrades, soldier?.rank)} helperText="تُضاف الدرجات من الإعدادات" />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <RhfSelect required control={control} name="militaryRank" label="الرتبة" options={choices(catalog.data?.soldierRanks, soldier?.military_rank)} helperText="تُضاف الرتب من الإعدادات" />
+          </Grid>
+          {([['company', 'السرية'], ['unit', 'الوحدة']] as const).map(([n, l]) => (
+            <Grid key={n} size={{ xs: 12, sm: 6, md: 4 }}><RhfText required control={control} name={n} label={l} /></Grid>
+          ))}
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}><RhfText control={control} name="subUnit" label="الوحدة الفرعية" /></Grid>
+          {([['phone', 'رقم الهاتف'], ['address', 'العنوان المدني']] as const).map(([n, l]) => (
+            <Grid key={n} size={{ xs: 12, sm: 6, md: 4 }}><RhfText required control={control} name={n} label={l} slotProps={{ htmlInput: { dir: n === 'phone' ? 'ltr' : undefined } }} /></Grid>
           ))}
         </Grid>
       </SectionCard>

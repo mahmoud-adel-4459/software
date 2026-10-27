@@ -20,8 +20,10 @@ import type {
   LedgerResponse,
   Permit,
   ReportFilter,
+  ReportPeriod,
   ReportResponse,
   Session,
+  SoldierEvaluation,
   SoldierRecord,
   SoldiersResponse,
   Summary,
@@ -71,7 +73,8 @@ export const api = {
   fitness: (soldierId: string) =>
     get<{ records: FitnessRecord[] }>(`/api/fitness${qs({ soldierId })}`).then((r) => r.records),
   report: (f: Partial<ReportFilter>) => get<ReportResponse>(`/api/reports${qs({ ...f })}`),
-  dailyReport: (date: string) => get<DailyReport>(`/api/reports/daily${qs({ date })}`),
+  dailyReport: (date: string, period: ReportPeriod = 'day') => get<DailyReport>(`/api/reports/daily${qs({ date, period })}`),
+  soldierEvaluation: (soldierId: string) => get<SoldierEvaluation>(`/api/soldier/evaluation${qs({ soldierId })}`),
   dashboard: (days: number) => get<DashboardData>(`/api/dashboard${qs({ days })}`),
   importRows: (path: ImportPath, rows: unknown[], requestId: string = crypto.randomUUID()) =>
     post<ImportResult>(path, { rows }, requestId),

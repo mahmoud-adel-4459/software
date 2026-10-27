@@ -12,6 +12,7 @@ const MODE_BY_KIND = {
   'visitor-cards': 'label',
   report: 'memo',
   'daily-report': 'memo',
+  'soldier-file': 'memo',
   voucher: 'receipt',
   canteen: 'receipt',
 };
@@ -122,9 +123,10 @@ function printOptions(spec, settings = {}) {
     return {
       ...base,
       pageSize: spec.paper,
-      margins: spec.mode === 'memo'
-        ? { marginType: 'none' }
-        : { marginType: spec.margins === 'narrow' ? 'minimum' : 'default' },
+      margins:
+        spec.mode === 'memo'
+          ? { marginType: 'none' }
+          : { marginType: spec.margins === 'narrow' ? 'minimum' : 'default' },
     };
   }
   return {

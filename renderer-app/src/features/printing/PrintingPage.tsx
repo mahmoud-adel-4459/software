@@ -97,7 +97,8 @@ function QuickLookup() {
     { field: 'id', headerName: '', width: 56, sortable: false, renderCell: (c) => <Radio size="small" checked={selected === c.row.id} onChange={() => setChosen(c.row.id)} slotProps={{ input: { 'aria-label': `اختيار ${c.row.name}` } }} /> },
     { field: 'name', headerName: 'الاسم', flex: 1, minWidth: 160 },
     { field: 'military_no', headerName: 'الرقم', width: 130, renderCell: (c) => <span className="num">{c.value}</span> },
-    { field: 'rank', headerName: 'الرتبة', width: 110 },
+    { field: 'rank', headerName: 'الدرجة', width: 100 },
+    { field: 'military_rank', headerName: 'الرتبة', width: 100 },
   ];
   return (
     <SectionCard title="بحث وطباعة QR">

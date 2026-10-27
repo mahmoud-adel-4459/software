@@ -28,6 +28,7 @@ export function FitnessPage() {
   const [date, setDate] = useState(todayCairo());
   const [notes, setNotes] = useState('');
   const chosenType = type || types[0]?.[0] || '';
+  const standard = catalog.data?.fitnessStandards?.find((s) => s.name === chosenType);
   const records = useQuery({ queryKey: ['fitness', soldier?.id], queryFn: () => api.fitness(soldier!.id), enabled: Boolean(soldier) });
   const save = useIdempotentPost<{ soldierId: string; type: string; value: number; date: string; notes: string }>('/api/fitness', {
     onSuccess: async () => {
@@ -35,6 +36,7 @@ export function FitnessPage() {
       setNotes('');
       notify.success('تم حفظ الاختبار');
       await queryClient.invalidateQueries({ queryKey: ['fitness'] });
+      await queryClient.invalidateQueries({ queryKey: ['soldier-evaluation'] });
     },
     onError: notify.apiError,
   });
@@ -48,11 +50,12 @@ export function FitnessPage() {
     { field: 'date', headerName: 'التاريخ', width: 140, valueFormatter: (v: string) => dayOnly(v) },
     { field: 'type', headerName: 'الاختبار', flex: 1, minWidth: 160 },
     { field: 'value', headerName: 'النتيجة', width: 160, valueGetter: (_v, r) => `${r.value ?? r.raw_result ?? ''} ${r.unit ?? ''}` },
+    { field: 'score', headerName: 'النسبة', width: 110, renderCell: (c) => (c.row.score == null ? '—' : <b className="num">{`${c.row.score}%`}</b>) },
     { field: 'notes', headerName: 'ملاحظات', flex: 1, minWidth: 160 },
   ];
   return (
     <>
-      <PageHeader title="اللياقة" description="تسجيل نتائج اللياقة حسب نوع الاختبار وتاريخه."
+      <PageHeader title="اللياقة" description="تسجيل نتائج اللياقة حسب نوع الاختبار وتاريخه. النسبة تُحسب من المعايير المحددة في الإعدادات."
         actions={<ExcelButtons importSpec={FITNESS_IMPORT} build={soldier ? () => sheetWorkbook('اللياقة', 'اللياقة', [{ header: 'التاريخ', key: 'date' }, { header: 'الاختبار', key: 'type', width: 24 }, { header: 'النتيجة', key: 'value' }, { header: 'الوحدة', key: 'unit' }, { header: 'ملاحظات', key: 'notes', width: 30 }],
           (records.data ?? []).map((r) => ({ date: dayOnly(r.date), type: r.type, value: r.value ?? r.raw_result ?? '', unit: r.unit ?? '', notes: r.notes }))) : undefined} />} />
       <SoldierLookup selected={soldier} onSelect={setSoldier} />
@@ -64,7 +67,8 @@ export function FitnessPage() {
                 <TextField select label="نوع الاختبار" value={chosenType} onChange={(e) => setType(e.target.value)}>
                   {types.map(([t, u]) => <MenuItem key={t} value={t}>{`${t} (${u})`}</MenuItem>)}
                 </TextField>
-                <TextField label="النتيجة بالقيمة الموضحة" type="number" value={value} onChange={(e) => setValue(e.target.value)} slotProps={{ htmlInput: { step: 0.01, min: 0 } }} />
+                <TextField label={`النتيجة (${standard?.unit ?? 'بالقيمة الموضحة'})`} type="number" value={value} onChange={(e) => setValue(e.target.value)} slotProps={{ htmlInput: { step: 0.01, min: 0 } }}
+                  helperText={standard ? `المعيار ${standard.target} ${standard.unit} = 100% — ${standard.better === 'higher' ? 'الأكثر أفضل' : 'الأقل (الأسرع) أفضل'}` : undefined} />
                 <TextField label="تاريخ الاختبار" type="date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
                 <TextField label="ملاحظات" value={notes} onChange={(e) => setNotes(e.target.value)} />
                 <Button type="submit" variant="contained" loading={save.isPending}>حفظ الاختبار</Button>

@@ -9,7 +9,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { api } from '@/api/endpoints';
 import type { Soldier } from '@/api/types';
 import { notify } from '@/lib/notify';
-import { parseGateScan } from '@/lib/soldierProfile';
+import { parseGateScan, rankTitle } from '@/lib/soldierProfile';
 import { tokens } from '@/theme/tokens';
 
 /** Select an active soldier by exact military number (used by canteen, buffet and fitness). */
@@ -53,7 +53,7 @@ export function SoldierLookup({ selected, onSelect }: { selected: Soldier | null
         <Button type="button" variant="tonal" startIcon={<QrIcon />} disabled={busy} onClick={() => { setNo(''); clearSelection(); inputRef.current?.focus(); }}>اسكان كود العسكري</Button>
         <Button type="submit" variant="contained" startIcon={<SearchIcon />} loading={busy}>اختيار العسكري</Button>
         {selected && (
-          <Chip label={`${selected.rank} / ${selected.name} · ${selected.company}`} onDelete={() => { setNo(''); clearSelection(); inputRef.current?.focus(); }} sx={{ bgcolor: tokens.primaryLight, color: tokens.primary, height: 36 }} />
+          <Chip label={`${rankTitle(selected)} / ${selected.name} · ${selected.company}`} onDelete={() => { setNo(''); clearSelection(); inputRef.current?.focus(); }} sx={{ bgcolor: tokens.primaryLight, color: tokens.primary, height: 36 }} />
         )}
       </Stack>
     </Paper>

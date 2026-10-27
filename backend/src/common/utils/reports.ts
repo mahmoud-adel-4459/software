@@ -59,7 +59,8 @@ const UI_COLUMNS: Record<ReportId, [string, string][]> = {
   soldiers: [
     ['name', 'الاسم'],
     ['military_no', 'الرقم العسكري'],
-    ['rank', 'الرتبة'],
+    ['rank', 'الدرجة'],
+    ['military_rank', 'الرتبة'],
     ['company', 'السرية'],
     ['status', 'الحالة'],
     ['archived', 'مؤرشف'],
@@ -92,6 +93,8 @@ const UI_COLUMNS: Record<ReportId, [string, string][]> = {
     ['type', 'الاختبار'],
     ['value', 'النتيجة'],
     ['unit', 'الوحدة'],
+    ['score', 'النسبة %'],
+    ['grade', 'التقدير'],
   ],
   visitor: [
     ['category_name', 'الفئة'],

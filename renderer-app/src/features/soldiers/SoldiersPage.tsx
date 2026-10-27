@@ -32,10 +32,11 @@ import { SOLDIER_IMPORT, sheetWorkbook } from '@/lib/excel';
 const BATCH = 200;
 
 const soldiersWorkbook = (rows: Soldier[]) => sheetWorkbook('العسكريون', 'العسكريون', [
-  { header: 'الاسم', key: 'name', width: 30 }, { header: 'الرقم العسكري', key: 'military_no' }, { header: 'الرتبة', key: 'rank' },
-  { header: 'السرية', key: 'company' }, { header: 'الوحدة', key: 'unit' }, { header: 'الحالة', key: 'status' },
+  { header: 'الاسم', key: 'name', width: 30 }, { header: 'الرقم العسكري', key: 'military_no' }, { header: 'الدرجة', key: 'rank' },
+  { header: 'الرتبة', key: 'military_rank' }, { header: 'السرية', key: 'company' }, { header: 'الوحدة', key: 'unit' },
+  { header: 'الوحدة الفرعية', key: 'sub_unit' }, { header: 'الحالة', key: 'status' },
   { header: 'الرقم القومي', key: 'national_id' }, { header: 'الهاتف', key: 'phone' },
-], rows.map((r) => ({ name: r.name, military_no: r.military_no, rank: r.rank, company: r.company, unit: r.unit, status: r.status === 'in' ? 'داخل الوحدة' : 'خارج الوحدة', national_id: r.national_id ?? '', phone: r.phone ?? '' })));
+], rows.map((r) => ({ name: r.name, military_no: r.military_no, rank: r.rank, military_rank: r.military_rank ?? '', company: r.company, unit: r.unit, sub_unit: r.sub_unit ?? '', status: r.status === 'in' ? 'داخل الوحدة' : 'خارج الوحدة', national_id: r.national_id ?? '', phone: r.phone ?? '' })));
 
 /** Soldiers register: search, archived toggle, QR actions, 200-row server batches with client pagination. */
 export function SoldiersPage() {
@@ -58,7 +59,8 @@ export function SoldiersPage() {
   const columns: Column<Soldier>[] = [
     { field: 'name', headerName: 'الاسم', flex: 1.4, minWidth: 200, renderCell: (c) => <b>{c.value}</b> },
     { field: 'military_no', headerName: 'الرقم العسكري', width: 150, renderCell: (c) => <span className="num">{c.value}</span> },
-    { field: 'rank', headerName: 'الرتبة', width: 130 },
+    { field: 'rank', headerName: 'الدرجة', width: 110 },
+    { field: 'military_rank', headerName: 'الرتبة', width: 110 },
     { field: 'company', headerName: 'السرية', width: 130 },
     { field: 'status', headerName: 'الحالة', width: 160, renderCell: (c) => <SoldierStatusChip status={c.row.status} /> },
     {

@@ -40,9 +40,13 @@ model Soldier {
   military_no String   @unique
   national_id String
   name        String
+  /// الدرجة (e.g. مجند / متطوع / ضابط صف)
   rank        String
+  /// الرتبة (e.g. عسكري / عريف / رقيب)
+  military_rank String @default("")
   company     String
   unit        String
+  sub_unit    String   @default("")
   phone       String   @default("")
   address     String   @default("")
   status      String   @default("in")
@@ -68,6 +72,9 @@ model SoldierPersonnelRecord {
   title       String
   record_date String
   end_date    String?
+  /// HH:MM — leave: exit time on record_date / return time on end_date
+  start_time  String   @default("")
+  end_time    String   @default("")
   reference   String   @default("")
   details     String   @default("")
   version     Int      @default(1)

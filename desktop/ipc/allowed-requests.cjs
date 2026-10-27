@@ -6,6 +6,7 @@
  */
 const GET_PATHS = [
   'soldier/records',
+  'soldier/evaluation',
   'visitor-cards',
   'gate/visitor-card',
   'soldiers',

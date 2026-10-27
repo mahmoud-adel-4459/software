@@ -1,0 +1,2 @@
+ALTER TABLE soldiers ADD COLUMN military_rank TEXT NOT NULL DEFAULT '';
+ALTER TABLE soldiers ADD COLUMN sub_unit TEXT NOT NULL DEFAULT '';

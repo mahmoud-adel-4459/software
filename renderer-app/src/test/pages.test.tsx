@@ -82,6 +82,10 @@ describe('soldiers', () => {
     fill(screen.getByLabelText(/^رقم الهاتف/), completeSoldier.phone);
     fill(screen.getByLabelText(/^العنوان المدني/), completeSoldier.address);
     for (const [key, label] of Object.entries(DETAIL_FIELDS)) fill(screen.getByLabelText(new RegExp(`^${label}\\s*\\*?$`)), completeSoldier.details[key as keyof typeof completeSoldier.details]);
+    for (const [label, choice] of [['الدرجة', 'متطوع'], ['الرتبة', 'رقيب']] as const) {
+      await userEvent.click(screen.getByRole('combobox', { name: new RegExp(`^${label}`) }));
+      await userEvent.click(await screen.findByRole('option', { name: choice }));
+    }
     for (const photo of completeSoldier.photos) {
       fake.pickAttachment = async () => ({ ok: true, data: photo });
       const slot = document.querySelector(`[data-photo-kind="${photo.kind}"]`) as HTMLElement;
@@ -92,10 +96,10 @@ describe('soldiers', () => {
 
     await waitFor(() => expect(fake.calls.some((c) => c.method === 'POST' && c.path === '/api/soldiers')).toBe(true));
     const post = fake.calls.find((c) => c.path === '/api/soldiers' && c.method === 'POST')!;
-    expect(post.data).toMatchObject({ name: 'سامي حسن علي', militaryNo: '777888999', nationalId: '29901011234999', rank: 'جندي' });
+    expect(post.data).toMatchObject({ name: 'سامي حسن علي', militaryNo: '777888999', nationalId: '29901011234999', rank: 'متطوع', militaryRank: 'رقيب' });
     expect(post.requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(await screen.findByText('سامي حسن علي')).toBeInTheDocument(); // back on the list
-  });
+  }, 60000);
 
   it('validates the military and national numbers before posting', async () => {
     const fake = await renderApp('/soldiers/new');

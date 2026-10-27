@@ -19,6 +19,7 @@ const {
   voucher,
   canteenReceipt,
   canteenStatement,
+  soldierFile,
 } = require('./documents.cjs');
 function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProvider, getSession, api }) {
   const previews = new Set();
@@ -29,9 +30,12 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
   let closing = false;
   function createDocumentWindow(worker = false) {
     const documentWindow = new BrowserWindow({
-      show: false, width: 1000, height: 850,
+      show: false,
+      width: 1000,
+      height: 850,
       parent: worker ? undefined : windowProvider(),
-      skipTaskbar: worker, focusable: !worker,
+      skipTaskbar: worker,
+      focusable: !worker,
       webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false },
     });
     previews.add(documentWindow);
@@ -40,7 +44,10 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       if (printWindow === documentWindow) printWindow = null;
       if (!worker && !closing) {
         const main = windowProvider();
-        if (main && !main.isDestroyed?.()) { main.show?.(); main.focus?.(); }
+        if (main && !main.isDestroyed?.()) {
+          main.show?.();
+          main.focus?.();
+        }
       }
     });
     documentWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -95,11 +102,20 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
         if (getSession() !== job.session) throw new Error('تغيرت الجلسة');
         const reservation = await api('POST', '/api/canteen/receipt-print', { id: job.receipt.id });
         try {
-          await renderJob({ ...job, settings: { ...job.settings, receiptCopies: 1 }, body: canteenReceipt(job.receipt, job.printedBy, reservation.printNumber) });
+          await renderJob({
+            ...job,
+            settings: { ...job.settings, receiptCopies: 1 },
+            body: canteenReceipt(job.receipt, job.printedBy, reservation.printNumber),
+          });
         } catch (error) {
           try {
-            await api('POST', '/api/canteen/receipt-print/failed', { id: job.receipt.id, reservationId: reservation.reservationId });
-          } catch (failure) { console.error('Receipt print reservation cleanup failed:', failure.message); }
+            await api('POST', '/api/canteen/receipt-print/failed', {
+              id: job.receipt.id,
+              reservationId: reservation.reservationId,
+            });
+          } catch (failure) {
+            console.error('Receipt print reservation cleanup failed:', failure.message);
+          }
           throw error;
         }
       }
@@ -108,17 +124,32 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
     printQueue = pending.catch(() => {});
     return pending;
   }
-  async function renderJob({ body, settings, mode, action, session, calibration = false, title = 'شؤون العسكريين', requestedAt = performance.now() }) {
+  async function renderJob({
+    body,
+    settings,
+    mode,
+    action,
+    session,
+    calibration = false,
+    title = 'شؤون العسكريين',
+    requestedAt = performance.now(),
+  }) {
     if (getSession() !== session) throw new Error('تغيرت الجلسة');
     const timing = { action, mode, prepareMs: Math.round(performance.now() - requestedAt) };
     const started = performance.now();
     const folder = path.join(app.getPath('userData'), 'print');
     fs.mkdirSync(folder, { recursive: true });
     // Run device discovery while Chromium lays out the document, rather than afterwards.
-    const healthReady = action === 'print' ? printerHealth().catch((error) => {
-      fs.appendFileSync(path.join(folder, 'print-errors.log'), `${new Date().toISOString()} printer status: ${error.message}\n`);
-      return [];
-    }) : undefined;
+    const healthReady =
+      action === 'print'
+        ? printerHealth().catch((error) => {
+            fs.appendFileSync(
+              path.join(folder, 'print-errors.log'),
+              `${new Date().toISOString()} printer status: ${error.message}\n`,
+            );
+            return [];
+          })
+        : undefined;
     const source = path.join(folder, `${require('node:crypto').randomUUID()}.html`);
     fs.writeFileSync(
       source,
@@ -146,13 +177,18 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       if (action === 'print') await printWindowReady;
       const printersReady = action === 'print' ? printerList() : undefined;
       // Attach rejection handlers immediately while rendering proceeds in parallel.
-      const devicesReady = printersReady ? Promise.all([printersReady, healthReady]).then(
-        ([printers, health]) => ({ printers, health }),
-        (error) => ({ error }),
-      ) : undefined;
+      const devicesReady = printersReady
+        ? Promise.all([printersReady, healthReady]).then(
+            ([printers, health]) => ({ printers, health }),
+            (error) => ({ error }),
+          )
+        : undefined;
       await preview.loadFile(source);
-      await preview.webContents.executeJavaScript(`${mode === 'label' ? 'Promise.resolve()' : 'document.fonts.ready'}.then(() => Promise.all(Array.from(document.images, img => img.decode().catch(() => {})))).then(() => true)`);
-      if (mode === 'memo') await preview.webContents.executeJavaScript(require('./documents/memo-pagination.cjs').MEMO_PAGINATION_SCRIPT);
+      await preview.webContents.executeJavaScript(
+        `${mode === 'label' ? 'Promise.resolve()' : 'document.fonts.ready'}.then(() => Promise.all(Array.from(document.images, img => img.decode().catch(() => {})))).then(() => true)`,
+      );
+      if (mode === 'memo')
+        await preview.webContents.executeJavaScript(require('./documents/memo-pagination.cjs').MEMO_PAGINATION_SCRIPT);
       timing.renderMs = Math.round(performance.now() - started);
       if (action === 'preview') {
         preview.show();
@@ -182,8 +218,13 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       timing.deviceWaitMs = Math.round(performance.now() - devicesStarted);
       if (devices.error) throw devices.error;
       // The print action always sends directly; only the preview action opens a window.
-      if (!options.deviceName) options.deviceName = devices.printers.find((printer) => printer.isDefault)?.name
-        || devices.health.find((printer) => printer.Default && devices.printers.some((installed) => installed.name === printer.Name))?.Name || '';
+      if (!options.deviceName)
+        options.deviceName =
+          devices.printers.find((printer) => printer.isDefault)?.name ||
+          devices.health.find(
+            (printer) => printer.Default && devices.printers.some((installed) => installed.name === printer.Name),
+          )?.Name ||
+          '';
       if (!options.deviceName) throw new Error('اختَر طابعة من الإعدادات أو عيّن طابعة افتراضية في Windows');
       options.silent = true;
       validatePrinter(options, devices.printers, devices.health);
@@ -192,7 +233,10 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
         try {
           return await sendPrintJob(preview.webContents, printOptions);
         } catch (error) {
-          fs.appendFileSync(path.join(folder, 'print-errors.log'), `${new Date().toISOString()} ${JSON.stringify({ mode, deviceName: printOptions.deviceName, pageSize: printOptions.pageSize, error: error.message })}\n`);
+          fs.appendFileSync(
+            path.join(folder, 'print-errors.log'),
+            `${new Date().toISOString()} ${JSON.stringify({ mode, deviceName: printOptions.deviceName, pageSize: printOptions.pageSize, error: error.message })}\n`,
+          );
           throw error;
         }
       };
@@ -205,7 +249,15 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       timing.nativePrintMs = Math.round(performance.now() - nativeStarted);
       return true;
     } finally {
-      if (action === 'print') fs.appendFileSync(path.join(folder, 'print-timings.jsonl'), JSON.stringify({ at: new Date().toISOString(), ...timing, totalMs: Math.round(performance.now() - requestedAt) }) + '\n');
+      if (action === 'print')
+        fs.appendFileSync(
+          path.join(folder, 'print-timings.jsonl'),
+          JSON.stringify({
+            at: new Date().toISOString(),
+            ...timing,
+            totalMs: Math.round(performance.now() - requestedAt),
+          }) + '\n',
+        );
       if (action === 'print') cleanup();
       else if (!shown) preview.close();
     }
@@ -252,7 +304,18 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
     const requestedAt = performance.now();
     const session = getSession();
     if (!session) throw new Error('سجل الدخول أولًا');
-    const KINDS = ['visitor-cards', 'card', 'qr', 'visitor-qr', 'voucher', 'report', 'daily-report', 'canteen', 'canteen-statement'];
+    const KINDS = [
+      'visitor-cards',
+      'card',
+      'qr',
+      'visitor-qr',
+      'voucher',
+      'report',
+      'daily-report',
+      'canteen',
+      'canteen-statement',
+      'soldier-file',
+    ];
     if (!arg || !KINDS.includes(arg.type) || !['print', 'pdf', 'preview'].includes(arg.mode))
       throw new Error('طلب طباعة غير صالح');
     if (arg.type === 'canteen' || arg.type === 'canteen-statement') canteenPrinter();
@@ -264,9 +327,13 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
     const printedBy = session.user.username || session.user.name;
     if (arg.type === 'report') body = reportTable(await api('GET', reportPath(arg.filter)));
     else if (arg.type === 'daily-report') {
-      const q = arg.date ? `?date=${encodeURIComponent(arg.date)}` : '';
+      const params = new URLSearchParams();
+      if (arg.date) params.set('date', String(arg.date));
+      if (['day', 'month', 'year'].includes(arg.period)) params.set('period', arg.period);
+      const q = params.size ? `?${params}` : '';
       body = dailyReportHtml(await api('GET', `/api/reports/daily${q}`));
-    } else if (arg.type === 'voucher') body = voucher(await api('GET', `/api/permit?id=${encodeURIComponent(arg.id)}`), printedBy);
+    } else if (arg.type === 'voucher')
+      body = voucher(await api('GET', `/api/permit?id=${encodeURIComponent(arg.id)}`), printedBy);
     else if (arg.type === 'canteen') {
       if (!arg.id) throw new Error('معرف العملية مطلوب');
       receipt = await api('GET', `/api/canteen/transaction?id=${encodeURIComponent(arg.id)}`);
@@ -280,12 +347,38 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       );
       const soldier = (await api('GET', `/api/soldier?id=${encodeURIComponent(arg.soldierId)}`)).soldier;
       body = canteenStatement({ soldier, ...ledger }, printedBy);
+    } else if (arg.type === 'soldier-file') {
+      if (!arg.soldierId) throw new Error('اختر العسكري');
+      const CATEGORIES = [
+        'grant',
+        'leave',
+        'penalty',
+        'reward',
+        'medical',
+        'medical_affairs',
+        'security_report',
+        'security_scan',
+        'evaluation',
+      ];
+      if (arg.category !== undefined && !CATEGORIES.includes(arg.category)) throw new Error('قسم غير صالح');
+      const id = encodeURIComponent(arg.soldierId);
+      const [{ soldier }, { records }, evaluation] = await Promise.all([
+        api('GET', `/api/soldier?id=${id}`),
+        api('GET', `/api/soldier/records?soldierId=${id}`),
+        api('GET', `/api/soldier/evaluation?soldierId=${id}`),
+      ]);
+      body = soldierFile({ soldier, records, evaluation, category: arg.category, printedBy });
     } else if (arg.type === 'visitor-cards') {
       const numbers = arg.cardNos;
-      if (!Array.isArray(numbers) || numbers.length < 1 || numbers.length > 24 ||
-          numbers.some(no => !Number.isInteger(no) || no < 1 || no > 24) ||
-          new Set(numbers).size !== numbers.length) throw new Error('اختر بطاقات من 1 إلى 24');
-      const qr = await Promise.all(numbers.map(no => QRCode.toDataURL(String(no), QR_OPTIONS)));
+      if (
+        !Array.isArray(numbers) ||
+        numbers.length < 1 ||
+        numbers.length > 24 ||
+        numbers.some((no) => !Number.isInteger(no) || no < 1 || no > 24) ||
+        new Set(numbers).size !== numbers.length
+      )
+        throw new Error('اختر بطاقات من 1 إلى 24');
+      const qr = await Promise.all(numbers.map((no) => QRCode.toDataURL(String(no), QR_OPTIONS)));
       body = visitorLabels(numbers, qr, 1);
     } else {
       if (
@@ -316,7 +409,16 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       }
     }
     if (getSession() !== session) throw new Error('تغيرت الجلسة');
-    return runJob({ body, settings, mode: geometry.modeOf(arg.type), action: arg.mode, session, requestedAt, receipt, printedBy });
+    return runJob({
+      body,
+      settings,
+      mode: geometry.modeOf(arg.type),
+      action: arg.mode,
+      session,
+      requestedAt,
+      receipt,
+      printedBy,
+    });
   });
   expose('app:pick-attachment', async () => {
     owner();

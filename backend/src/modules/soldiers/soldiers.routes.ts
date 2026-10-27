@@ -10,9 +10,11 @@ import {
   updateSoldierHandler,
 } from './soldiers.controller';
 import { attachmentRoutes } from './attachments.routes';
+import { soldierEvaluation } from './evaluation.service';
 
 export const soldiersRoutes = Router({ caseSensitive: true, strict: true });
 soldiersRoutes.get('/api/soldier/records', handle('admin', listPersonnelRecords));
+soldiersRoutes.get('/api/soldier/evaluation', handle('admin', soldierEvaluation));
 soldiersRoutes.post('/api/soldier/records', write({
   path: '/api/soldier/records', access: 'admin', audit: false,
   execute: (tx, _input, ctx) => savePersonnelRecord(tx, ctx, ctx.data),

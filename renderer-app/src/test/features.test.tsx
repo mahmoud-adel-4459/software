@@ -136,7 +136,8 @@ describe('Excel header mapping', () => {
     expect(m.unknownHeaders).toEqual(['عمود غريب']);
     expect(m.missingRequired).toEqual([]);
     const s = mapImportRows({ fileName: 'x', headers: ['name'], rows: [{ name: 'a' }] }, SOLDIER_IMPORT);
-    expect(s.missingRequired.map((f) => f.key)).toEqual(SOLDIER_IMPORT.fields.filter((f) => f.key !== 'name').map((f) => f.key));
+    expect(s.missingRequired.map((f) => f.key)).toEqual(SOLDIER_IMPORT.fields.filter((f) => f.required && f.key !== 'name').map((f) => f.key));
+    expect(s.missingRequired.map((f) => f.key)).not.toContain('militaryRank');
   });
   it('chunks to <=1000 rows with a request id per chunk and offsets error rows', async () => {
     expect(chunk(Array.from({ length: 2500 }, (_, i) => i)).map((c) => c.length)).toEqual([1000, 1000, 500]);
@@ -187,7 +188,7 @@ describe('Excel import / export flows', () => {
     await userEvent.click(screen.getByRole('button', { name: 'تصدير Excel' }));
     await waitFor(() => expect(fake.excelFiles).toHaveLength(1));
     const { arg } = fake.excelFiles[0];
-    expect(arg.sheets[0].columns.map((c) => c.header).slice(0, 3)).toEqual(['الاسم', 'الرقم العسكري', 'الرتبة']);
+    expect(arg.sheets[0].columns.map((c) => c.header).slice(0, 5)).toEqual(['الاسم', 'الرقم العسكري', 'الدرجة', 'الرتبة', 'السرية']);
     expect(arg.sheets[0].rows[0]).toMatchObject({ name: 'أحمد محمود علي حسن', military_no: '123456789', status: 'داخل الوحدة' });
   });
 });
