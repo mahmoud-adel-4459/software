@@ -13,7 +13,7 @@ describe('nav visibility by role and device kind', () => {
   it('internal admin sees everything', () => {
     expect(keys(s('admin', 'internal'))).toEqual([
       'dashboard', 'soldiers', 'new', 'visitors', 'canteen', 'buffet', 'fitness', 'gate', 'movements',
-      'daily-report', 'reports', 'printing', 'settings', 'users', 'backups', 'import', 'audit',
+      'report-center', 'daily-report', 'reports', 'printing', 'settings', 'users', 'backups', 'import', 'audit',
     ]);
   });
   it('clerk sees only canteen, buffet and reports', () => {

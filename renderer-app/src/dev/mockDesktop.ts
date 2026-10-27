@@ -156,6 +156,7 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
           case '/api/backup/preview': return ok({ schema: 3, counts: { users: 2, soldiers: 3, permits: 5 } });
           case '/api/reports': return ok({ type: params.get('type'), from: params.get('from'), to: params.get('to'), rows: state.soldiers.map((s) => ({ ...s })), summary: { rows: state.soldiers.length, inside: 2, outside: 1, archived: 0 }, totalCents: null });
           case '/api/reports/daily': return ok(dailyFixture(params.get('date') ?? ''));
+          case '/api/reports/build': return ok(analyticFixture(params));
           default: return fail(`مسار غير معروف: ${route}`, 404);
         }
       }
@@ -264,6 +265,25 @@ export function dashboardFixture(days: number): DashboardData {
     visitors: { today: 6, inside: 2, total: 55, previousTotal: 40, byDay: dates.map((date, i) => ({ date, count: i % 6 })), byCategory: [{ category: 'زائر عادي', count: 40 }, { category: 'ضابط', count: 15 }] },
     food: { canteen: food(1), buffet: food(2) },
     fitness: { records: 14, byType: [{ type: 'جري 3 كم', count: 9 }, { type: 'ضغط', count: 5 }] },
+  };
+}
+
+function analyticFixture(params: URLSearchParams) {
+  const from = params.get('from') ?? '';
+  const to = params.get('to') ?? from;
+  const topics = (params.get('topics') ?? 'gate').split(',');
+  return {
+    title: 'تقرير الوحدة المفصل', subject: { type: params.get('subject') ?? 'unit', label: 'الوحدة كلها' },
+    from, to, days: 1, previous: params.get('compare') ? { from, to } : null,
+    generatedAt: new Date().toISOString(), generatedBy: 'مدير النظام', unit: { name: 'الوحدة التجريبية', parentFormation: '' }, topics,
+    summary: [{ label: 'حركات البوابة والتصاريح — مرات الخروج', value: 4, previous: 2 }],
+    exceptions: [{ title: 'متأخرون عن موعد العودة', columns: [{ key: 'name', label: 'العسكري' }], rows: [{ name: 'أحمد محمود علي حسن' }] }],
+    profile: null,
+    sections: topics.map((id) => ({
+      id, title: id === 'gate' ? 'حركات البوابة والتصاريح' : id,
+      kpis: [{ label: 'مرات الخروج', value: 4, previous: 2 }],
+      tables: [{ title: 'حسب سبب الخروج', columns: [{ key: 'reason', label: 'السبب' }, { key: 'count', label: 'مرات', type: 'number', total: true }], rows: [{ reason: 'إجازة', count: 4 }] }],
+    })),
   };
 }
 
