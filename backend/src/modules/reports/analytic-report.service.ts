@@ -314,7 +314,10 @@ function buildSection(env: Env, p: Period, topic: Topic): Promise<Section> {
 /** Rows that need the commander's attention, taken from the built sections. */
 function exceptions(sections: Section[], scale: GradeBand[]): Table[] {
   const out: Table[] = [];
-  const detail = (id: string) => sections.find((s) => s.id === id)?.tables.at(-1);
+  const detail = (id: string) => {
+    const t = sections.find((s) => s.id === id)?.tables.at(-1);
+    return t && { ...t, columns: t.columns.map((c) => ({ ...c, total: false })) };
+  };
   const gate = detail('gate');
   if (gate) {
     const rows = gate.rows.filter((r) => r.late === 'نعم');

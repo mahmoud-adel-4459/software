@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
+import type { DocumentArg } from '@/api/types';
 import { renderApp } from './harness';
 
 it('builds an analytic report, exports a multi-sheet Excel and prints it on a chosen external printer', async () => {
@@ -29,7 +30,8 @@ it('builds an analytic report, exports a multi-sheet Excel and prints it on a ch
   await userEvent.click(within(dialog).getByRole('combobox', { name: /الطابعة/ }));
   await userEvent.click(await screen.findByRole('option', { name: /طابعة المكتب/ }));
   await userEvent.click(within(dialog).getByRole('button', { name: 'طباعة' }));
-  await waitFor(() => expect(fake.documents.some((d) => d.type === 'analytic-report' && d.mode === 'print')).toBe(true));
-  const printed = fake.documents.find((d) => d.type === 'analytic-report' && d.mode === 'print')!;
+  const docs = () => fake.documents as DocumentArg[];
+  await waitFor(() => expect(docs().some((d) => d.type === 'analytic-report' && d.mode === 'print')).toBe(true));
+  const printed = docs().find((d) => d.type === 'analytic-report' && d.mode === 'print')!;
   expect(printed).toMatchObject({ printer: 'Printer-1', printCopies: 1, query: { subject: 'unit', topics: 'gate', compare: '1' } });
 }, 60000);

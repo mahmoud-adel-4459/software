@@ -8,15 +8,43 @@
   "phone": "01000000000",
   "address": "القاهرة — عنوان اختبار",
   "details": {
-    "cardNo": "1234", "originalUnit": "الوحدة الأصلية", "specialty": "مشاة",
-    "enlistDate": "2024-01-01", "dischargeDate": "2027-01-01", "weaponNo": "12345",
-    "unitJoinDate": "2024-02-01", "birthDate": "2000-01-01",
-    "height": "175", "weight": "70", "age": "26", "offDutyJob": "طالب"
+    "cardNo": "1234",
+    "originalUnit": "الوحدة الأصلية",
+    "specialty": "مشاة",
+    "enlistDate": "2024-01-01",
+    "dischargeDate": "2027-01-01",
+    "weaponNo": "12345",
+    "unitJoinDate": "2024-02-01",
+    "birthDate": "2000-01-01",
+    "height": "175",
+    "weight": "70",
+    "age": "26",
+    "offDutyJob": "طالب"
   },
   "photos": [
-    { "kind": "photo", "name": "photo.png", "mime": "image/png", "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" },
-    { "kind": "idPhoto", "name": "id.png", "mime": "image/png", "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" },
-    { "kind": "carnetFront", "name": "front.png", "mime": "image/png", "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" },
-    { "kind": "carnetBack", "name": "back.png", "mime": "image/png", "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" }
+    {
+      "kind": "photo",
+      "name": "photo.png",
+      "mime": "image/png",
+      "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    },
+    {
+      "kind": "idPhoto",
+      "name": "id.png",
+      "mime": "image/png",
+      "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    },
+    {
+      "kind": "carnetFront",
+      "name": "front.png",
+      "mime": "image/png",
+      "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    },
+    {
+      "kind": "carnetBack",
+      "name": "back.png",
+      "mime": "image/png",
+      "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    }
   ]
 }

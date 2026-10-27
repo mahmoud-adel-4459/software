@@ -28,14 +28,18 @@ function paginateMemo() {
     headings.forEach((heading) => content.appendChild(heading));
     return page;
   }
-  const tooTall = () => { throw new Error('أحد صفوف أو أقسام التقرير أطول من صفحة A4؛ قلّل النص أو عدد الأعمدة.'); };
+  const tooTall = () => {
+    throw new Error('أحد صفوف أو أقسام التقرير أطول من صفحة A4؛ قلّل النص أو عدد الأعمدة.');
+  };
   document.body.replaceChildren();
   nextPage();
   for (const block of blocks) {
     if (block.nodeType === 1 && block.tagName === 'TABLE') {
       const newTable = () => {
         const table = block.cloneNode(false);
-        Array.from(block.children).filter((node) => !['TBODY', 'TFOOT'].includes(node.tagName)).forEach((node) => table.appendChild(node.cloneNode(true)));
+        Array.from(block.children)
+          .filter((node) => !['TBODY', 'TFOOT'].includes(node.tagName))
+          .forEach((node) => table.appendChild(node.cloneNode(true)));
         const tbody = document.createElement('tbody');
         table.appendChild(tbody);
         content.appendChild(table);

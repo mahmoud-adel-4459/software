@@ -12,9 +12,11 @@ function memoDocument({ title, body, settings, fontUrl, defaultLogo }) {
   const formation = settings.memoFormation || 'قيادة قوات الحرس الجمهوري';
   const signer = (side, rank, role) => {
     const name = settings[`memo${side}Name`] || '................................';
-    return `<section class="memo-signature ${side.toLowerCase()}"><div class="signature-label">التوقيع / <span>........................</span></div>` +
+    return (
+      `<section class="memo-signature ${side.toLowerCase()}"><div class="signature-label">التوقيع / <span>........................</span></div>` +
       `<div>${esc(settings[`memo${side}Rank`] || rank)} / ${esc(name)}</div>` +
-      `<div>${esc(settings[`memo${side}Role`] || role)}</div><div>${esc(unit)}</div></section>`;
+      `<div>${esc(settings[`memo${side}Role`] || role)}</div><div>${esc(unit)}</div></section>`
+    );
   };
   const css = `
     @page{size:A4 portrait;margin:0}
@@ -43,12 +45,17 @@ function memoDocument({ title, body, settings, fontUrl, defaultLogo }) {
   `;
   const image = logo ? `<img class="memo-logo" src="${esc(logo)}" alt="شعار الوحدة">` : '';
   const watermark = logo ? `<img class="memo-watermark" src="${esc(logo)}" alt="">` : '';
-  return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';font-src file:;img-src data:;"><title>${esc(title)}</title>` +
+  return (
+    `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';font-src file:;img-src data:;"><title>${esc(title)}</title>` +
     `<style>@font-face{font-family:Plex;src:url('${fontUrl}')}\n${css}</style></head><body><div class="memo-page">` +
     '<div class="memo-frame" aria-hidden="true"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>' +
     `<header class="memo-header">${image}<div class="memo-formation">${esc(formation)}<br>${esc(unit)}</div><h1 class="memo-heading">مذكرة تفصيلية</h1></header>` +
-    watermark + `<main class="memo-content">${body}</main><footer class="memo-footer">` +
-    signer('Right', 'نقيب', 'ضابط أمن الكتيبة') + signer('Left', 'مقدم', 'قائد الكتيبة') + '</footer></div></body></html>';
+    watermark +
+    `<main class="memo-content">${body}</main><footer class="memo-footer">` +
+    signer('Right', 'نقيب', 'ضابط أمن الكتيبة') +
+    signer('Left', 'مقدم', 'قائد الكتيبة') +
+    '</footer></div></body></html>'
+  );
 }
 
 module.exports = { memoDocument };

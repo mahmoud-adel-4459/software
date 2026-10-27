@@ -133,7 +133,8 @@ function letterhead(settings, title) {
 
 /** Full printable HTML page. `mode`: 'office' (A4/A5 + letterhead), 'label' (no letterhead), 'receipt' (compact). */
 function documentHtml({ title, body, settings = {}, fontUrl, mode = 'office', calibration = false }) {
-  if (mode === 'memo') return require('./memo.cjs').memoDocument({ title, body, settings, fontUrl, defaultLogo: DEFAULT_LOGO });
+  if (mode === 'memo')
+    return require('./memo.cjs').memoDocument({ title, body, settings, fontUrl, defaultLogo: DEFAULT_LOGO });
   const paper = settings.paper || 'A4';
   if (!PAPER_SIZES.includes(paper)) throw new Error('مقاس ورق غير صالح');
   let css;

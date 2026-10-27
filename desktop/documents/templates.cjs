@@ -442,34 +442,35 @@ function dataTable(table) {
   const body = rows.length
     ? rows.map((r) => `<tr>${cols.map((c) => `<td>${esc(typed(r[c.key], c.type))}</td>`).join('')}</tr>`).join('')
     : `<tr><td colspan="${cols.length}">لا توجد بيانات في هذه الفترة</td></tr>`;
+  const firstTotal = cols.findIndex((c) => c.total);
+  const sum = (c) => typed(Math.round(table.rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0) * 100) / 100, c.type);
+  // The label spans the columns before the first total so it never wraps in a narrow column.
   const totals =
-    rows.length && cols.some((c) => c.total)
-      ? `<tr>${cols
-          .map((c, i) => {
-            if (c.total)
-              return `<th>${esc(typed(Math.round(table.rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0) * 100) / 100, c.type))}</th>`;
-            return i === 0 ? '<th>الإجمالي</th>' : '<th></th>';
-          })
+    rows.length && firstTotal >= 0
+      ? `<tr>${firstTotal > 0 ? `<th colspan="${firstTotal}">الإجمالي</th>` : ''}${cols
+          .slice(firstTotal)
+          .map((c, i) =>
+            c.total ? `<th>${esc(sum(c))}</th>` : firstTotal === 0 && i === 0 ? '<th>الإجمالي</th>' : '<th></th>',
+          )
           .join('')}</tr>`
       : '';
   const more =
     table.rows.length > MAX_PRINTED_ROWS
       ? `<p>عُرض أول ${MAX_PRINTED_ROWS} صف من ${table.rows.length}؛ الملف الكامل في Excel.</p>`
       : '';
-  return `<h3>${esc(table.title)} <small>(${table.rows.length})</small></h3><table><thead><tr>${head}</tr></thead><tbody>${body}${totals}</tbody></table>${more}`;
+  const size = cols.length >= 8 ? ' style="font-size:8pt"' : cols.length >= 6 ? ' style="font-size:9pt"' : '';
+  return `<h3>${esc(table.title)} <small>(${table.rows.length})</small></h3><table${size}><thead><tr>${head}</tr></thead><tbody>${body}${totals}</tbody></table>${more}`;
 }
 
 /** Report center document: header, executive summary, exceptions, then each section's KPIs and tables. */
 function analyticReportHtml(report) {
   if (!report || !Array.isArray(report.sections)) throw new Error('لا توجد بيانات للتقرير');
   const compare = Boolean(report.previous);
-  const span = report.from === report.to ? report.from : `${report.from} — ${report.to}`;
+  const range = (a, b) => (a === b ? `<bdi>${esc(a)}</bdi>` : `من <bdi>${esc(a)}</bdi> إلى <bdi>${esc(b)}</bdi>`);
   return [
     `<h2>${esc(report.title)} — ${esc(report.subject.label)}</h2>`,
-    `<p><strong>الفترة:</strong> <bdi dir="ltr">${esc(span)}</bdi> (${report.days} يوم)` +
-      (compare
-        ? ` · <strong>مقارنة بـ:</strong> <bdi dir="ltr">${esc(report.previous.from)} — ${esc(report.previous.to)}</bdi>`
-        : '') +
+    `<p><strong>الفترة:</strong> ${range(report.from, report.to)} (${report.days} يوم)` +
+      (compare ? ` · <strong>مقارنة بـ:</strong> ${range(report.previous.from, report.previous.to)}` : '') +
       ` · <strong>الأقسام:</strong> ${report.sections.length} · أعدّه: ${esc(report.generatedBy)} · ${esc(cell('at', report.generatedAt))}</p>`,
     report.profile ? dataTable({ ...report.profile, title: 'البيانات الأساسية' }) : '',
     `<h2>الملخص التنفيذي</h2>${kpiTable(report.summary, compare)}`,

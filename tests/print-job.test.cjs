@@ -7,10 +7,15 @@ test('printer checks share in-flight work, reuse fresh status and refresh after 
   let now = 0;
   let calls = 0;
   let finish;
-  const read = createPrinterHealthCache(() => {
-    calls++;
-    return new Promise((resolve) => { finish = resolve; });
-  }, { ttlMs: 10, clock: () => now });
+  const read = createPrinterHealthCache(
+    () => {
+      calls++;
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    },
+    { ttlMs: 10, clock: () => now },
+  );
   const first = read();
   assert.equal(read(), first);
   await Promise.resolve();
@@ -40,7 +45,10 @@ test('failed printer checks are retried rather than cached', async () => {
   assert.equal(calls, 2);
 });
 
-const printers = [{ name: 'Xprinter XP-246B', isDefault: true }, { name: 'XP-90 (copy 2)', isDefault: false }];
+const printers = [
+  { name: 'Xprinter XP-246B', isDefault: true },
+  { name: 'XP-90 (copy 2)', isDefault: false },
+];
 
 test('printing rejects missing printers and stale names copied from a different PC', () => {
   assert.throws(() => validatePrinter({ silent: false }, []), /لا توجد طابعات/);
@@ -49,20 +57,47 @@ test('printing rejects missing printers and stale names copied from a different 
 });
 
 test('Windows offline queues never report print success', () => {
-  assert.throws(() => validatePrinter({ deviceName: 'Xprinter XP-246B' }, printers, [{ Name: 'Xprinter XP-246B', WorkOffline: true, PrinterStatus: 3 }]), /غير متصلة/);
-  assert.throws(() => validatePrinter({ silent: true }, printers, [{ Name: 'Xprinter XP-246B', WorkOffline: false, PrinterStatus: 7 }]), /غير متصلة/);
-  assert.doesNotThrow(() => validatePrinter({ silent: false }, printers, [{ Name: 'Xprinter XP-246B', WorkOffline: true }]));
+  assert.throws(
+    () =>
+      validatePrinter({ deviceName: 'Xprinter XP-246B' }, printers, [
+        { Name: 'Xprinter XP-246B', WorkOffline: true, PrinterStatus: 3 },
+      ]),
+    /غير متصلة/,
+  );
+  assert.throws(
+    () =>
+      validatePrinter({ silent: true }, printers, [{ Name: 'Xprinter XP-246B', WorkOffline: false, PrinterStatus: 7 }]),
+    /غير متصلة/,
+  );
+  assert.doesNotThrow(() =>
+    validatePrinter({ silent: false }, printers, [{ Name: 'Xprinter XP-246B', WorkOffline: true }]),
+  );
 });
 
 test('waits for native print callback, and propagates failure and cancellation', async () => {
   let callback;
   let finished = false;
-  const job = sendPrintJob({ print: (_options, cb) => { callback = cb; } }, {}).then(() => { finished = true; });
+  const job = sendPrintJob(
+    {
+      print: (_options, cb) => {
+        callback = cb;
+      },
+    },
+    {},
+  ).then(() => {
+    finished = true;
+  });
   await Promise.resolve();
   assert.equal(finished, false);
   callback(true);
   await job;
   assert.equal(finished, true);
-  await assert.rejects(sendPrintJob({ print: (_options, cb) => cb(false, 'Print job failed') }, {}), /Print job failed/);
-  await assert.rejects(sendPrintJob({ print: (_options, cb) => cb(false, 'Print job canceled') }, {}), (error) => error.canceled === true);
+  await assert.rejects(
+    sendPrintJob({ print: (_options, cb) => cb(false, 'Print job failed') }, {}),
+    /Print job failed/,
+  );
+  await assert.rejects(
+    sendPrintJob({ print: (_options, cb) => cb(false, 'Print job canceled') }, {}),
+    (error) => error.canceled === true,
+  );
 });
