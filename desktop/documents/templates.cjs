@@ -392,7 +392,100 @@ function soldierFile({ soldier, records = [], evaluation, category, printedBy = 
     .join('\n  ');
 }
 
+// ---- Analytic report (report center) -------------------------------------------------------
+
+const MAX_PRINTED_ROWS = 2000;
+
+/** Display text of a report value by column type. */
+function typed(value, type) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (type === 'money') return `${Number(value).toFixed(2)} ج.م`;
+  if (type === 'percent') return `${value}%`;
+  return String(value);
+}
+
+function kpiValue(k) {
+  if (k.value === null || k.value === undefined) return '—';
+  return `${k.value}${k.unit ? ` ${k.unit === '%' ? '%' : k.unit}` : ''}`;
+}
+
+function change(k) {
+  if (typeof k.value !== 'number' || typeof k.previous !== 'number') return '—';
+  const diff = Math.round((k.value - k.previous) * 100) / 100;
+  if (diff === 0) return '= بدون تغيير';
+  const pct = k.previous ? ` (${Math.round((diff / k.previous) * 1000) / 10}%)` : '';
+  return `${diff > 0 ? '▲ +' : '▼ '}${diff}${pct}`;
+}
+
+function kpiTable(kpis, compare) {
+  const head = ['المؤشر', 'القيمة', ...(compare ? ['الفترة السابقة', 'التغير'] : [])];
+  return (
+    `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>` +
+    kpis
+      .map(
+        (k) =>
+          `<tr><th>${esc(k.label)}</th><td><strong>${esc(kpiValue(k))}</strong></td>` +
+          (compare
+            ? `<td>${esc(k.previous === undefined || k.previous === null ? '—' : k.previous)}</td><td>${esc(change(k))}</td>`
+            : '') +
+          '</tr>',
+      )
+      .join('') +
+    '</tbody></table>'
+  );
+}
+
+function dataTable(table) {
+  const cols = table.columns;
+  const rows = table.rows.slice(0, MAX_PRINTED_ROWS);
+  const head = cols.map((c) => `<th>${esc(c.label)}</th>`).join('');
+  const body = rows.length
+    ? rows.map((r) => `<tr>${cols.map((c) => `<td>${esc(typed(r[c.key], c.type))}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}">لا توجد بيانات في هذه الفترة</td></tr>`;
+  const totals =
+    rows.length && cols.some((c) => c.total)
+      ? `<tr>${cols
+          .map((c, i) => {
+            if (c.total)
+              return `<th>${esc(typed(Math.round(table.rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0) * 100) / 100, c.type))}</th>`;
+            return i === 0 ? '<th>الإجمالي</th>' : '<th></th>';
+          })
+          .join('')}</tr>`
+      : '';
+  const more =
+    table.rows.length > MAX_PRINTED_ROWS
+      ? `<p>عُرض أول ${MAX_PRINTED_ROWS} صف من ${table.rows.length}؛ الملف الكامل في Excel.</p>`
+      : '';
+  return `<h3>${esc(table.title)} <small>(${table.rows.length})</small></h3><table><thead><tr>${head}</tr></thead><tbody>${body}${totals}</tbody></table>${more}`;
+}
+
+/** Report center document: header, executive summary, exceptions, then each section's KPIs and tables. */
+function analyticReportHtml(report) {
+  if (!report || !Array.isArray(report.sections)) throw new Error('لا توجد بيانات للتقرير');
+  const compare = Boolean(report.previous);
+  const span = report.from === report.to ? report.from : `${report.from} — ${report.to}`;
+  return [
+    `<h2>${esc(report.title)} — ${esc(report.subject.label)}</h2>`,
+    `<p><strong>الفترة:</strong> <bdi dir="ltr">${esc(span)}</bdi> (${report.days} يوم)` +
+      (compare
+        ? ` · <strong>مقارنة بـ:</strong> <bdi dir="ltr">${esc(report.previous.from)} — ${esc(report.previous.to)}</bdi>`
+        : '') +
+      ` · <strong>الأقسام:</strong> ${report.sections.length} · أعدّه: ${esc(report.generatedBy)} · ${esc(cell('at', report.generatedAt))}</p>`,
+    report.profile ? dataTable({ ...report.profile, title: 'البيانات الأساسية' }) : '',
+    `<h2>الملخص التنفيذي</h2>${kpiTable(report.summary, compare)}`,
+    report.exceptions.length
+      ? `<h2>استثناءات تحتاج انتباه</h2>${report.exceptions.map(dataTable).join('')}`
+      : '<p><strong>لا توجد استثناءات تحتاج انتباه في هذه الفترة.</strong></p>',
+    ...report.sections.map(
+      (s) => `<h2>${esc(s.title)}</h2>${kpiTable(s.kpis, compare)}${s.tables.map(dataTable).join('')}`,
+    ),
+  ]
+    .filter(Boolean)
+    .join('\n  ');
+}
+
 module.exports = {
+  analyticReportHtml,
   reportTable,
   cards,
   visitorLabels,

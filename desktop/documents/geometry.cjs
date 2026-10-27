@@ -13,6 +13,7 @@ const MODE_BY_KIND = {
   report: 'memo',
   'daily-report': 'memo',
   'soldier-file': 'memo',
+  'analytic-report': 'memo',
   voucher: 'receipt',
   canteen: 'receipt',
 };

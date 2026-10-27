@@ -24,7 +24,7 @@ const GET_PATHS = [
   'canteen(?:/transaction)?',
   'fitness',
   'audit',
-  'reports(?:/daily)?',
+  'reports(?:/daily|/build)?',
   'backups',
   'backup/preview',
   'dashboard',

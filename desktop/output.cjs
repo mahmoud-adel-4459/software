@@ -20,6 +20,7 @@ const {
   canteenReceipt,
   canteenStatement,
   soldierFile,
+  analyticReportHtml,
 } = require('./documents.cjs');
 function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProvider, getSession, api }) {
   const previews = new Set();
@@ -133,6 +134,7 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
     calibration = false,
     title = 'شؤون العسكريين',
     requestedAt = performance.now(),
+    sheetCopies,
   }) {
     if (getSession() !== session) throw new Error('تغيرت الجلسة');
     const timing = { action, mode, prepareMs: Math.round(performance.now() - requestedAt) };
@@ -213,6 +215,7 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
         return true;
       }
       const options = geometry.printOptions(spec, settings);
+      if (sheetCopies > 1 && (spec.mode === 'office' || spec.mode === 'memo')) options.copies = sheetCopies;
       const devicesStarted = performance.now();
       const devices = await devicesReady;
       timing.deviceWaitMs = Math.round(performance.now() - devicesStarted);
@@ -315,13 +318,23 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       'canteen',
       'canteen-statement',
       'soldier-file',
+      'analytic-report',
     ];
     if (!arg || !KINDS.includes(arg.type) || !['print', 'pdf', 'preview'].includes(arg.mode))
       throw new Error('طلب طباعة غير صالح');
     if (arg.type === 'canteen' || arg.type === 'canteen-statement') canteenPrinter();
     else if (arg.type !== 'voucher' && arg.type !== 'visitor-qr') owner();
     const catalog = await api('GET', '/api/catalog');
-    const settings = catalog.settings;
+    // Sheet documents may be sent to another (external) printer chosen on the reports page.
+    const sheet = ['office', 'memo'].includes(geometry.modeOf(arg.type));
+    if (arg.printer !== undefined && (!sheet || typeof arg.printer !== 'string' || arg.printer.length > 200))
+      throw new Error('الطابعة المختارة غير صالحة لهذا المستند');
+    if (
+      arg.printCopies !== undefined &&
+      (!sheet || !Number.isInteger(arg.printCopies) || arg.printCopies < 1 || arg.printCopies > 20)
+    )
+      throw new Error('عدد النسخ من 1 إلى 20');
+    const settings = arg.printer ? { ...catalog.settings, printer: arg.printer } : catalog.settings;
     let body;
     let receipt;
     const printedBy = session.user.username || session.user.name;
@@ -368,6 +381,13 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
         api('GET', `/api/soldier/evaluation?soldierId=${id}`),
       ]);
       body = soldierFile({ soldier, records, evaluation, category: arg.category, printedBy });
+    } else if (arg.type === 'analytic-report') {
+      const params = new URLSearchParams();
+      for (const key of ['subject', 'soldierId', 'company', 'from', 'to', 'topics', 'compare']) {
+        const value = arg.query?.[key];
+        if (value !== undefined && value !== null && value !== '') params.set(key, String(value).slice(0, 500));
+      }
+      body = analyticReportHtml(await api('GET', `/api/reports/build?${params}`));
     } else if (arg.type === 'visitor-cards') {
       const numbers = arg.cardNos;
       if (
@@ -418,6 +438,8 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       requestedAt,
       receipt,
       printedBy,
+      sheetCopies: arg.printCopies,
+      title: arg.type === 'analytic-report' ? 'تقرير مفصل' : undefined,
     });
   });
   expose('app:pick-attachment', async () => {

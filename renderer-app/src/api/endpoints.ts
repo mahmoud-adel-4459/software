@@ -1,5 +1,7 @@
 import { ApiError, bridge, get, post, qs, unwrap } from './client';
 import type {
+  AnalyticReport,
+  AnalyticReportQuery,
   AppInfo,
   AttachmentFile,
   AuditRow,
@@ -74,6 +76,7 @@ export const api = {
     get<{ records: FitnessRecord[] }>(`/api/fitness${qs({ soldierId })}`).then((r) => r.records),
   report: (f: Partial<ReportFilter>) => get<ReportResponse>(`/api/reports${qs({ ...f })}`),
   dailyReport: (date: string, period: ReportPeriod = 'day') => get<DailyReport>(`/api/reports/daily${qs({ date, period })}`),
+  analyticReport: (q: AnalyticReportQuery) => get<AnalyticReport>(`/api/reports/build${qs({ ...q })}`),
   soldierEvaluation: (soldierId: string) => get<SoldierEvaluation>(`/api/soldier/evaluation${qs({ soldierId })}`),
   dashboard: (days: number) => get<DashboardData>(`/api/dashboard${qs({ days })}`),
   importRows: (path: ImportPath, rows: unknown[], requestId: string = crypto.randomUUID()) =>

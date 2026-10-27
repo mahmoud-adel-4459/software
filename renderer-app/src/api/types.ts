@@ -468,11 +468,47 @@ export interface ExcelColumn {
   header: string;
   key: string;
   width?: number;
+  format?: 'money' | 'percent' | 'number';
+  /** Adds a SUM formula in a final «الإجمالي» row. */
+  total?: 'sum';
 }
 export interface ExcelSheet {
   name: string;
   columns: ExcelColumn[];
   rows: Record<string, string | number | boolean | null>[];
+  /** Lines printed above the table (report title, period…). */
+  title?: string[];
+}
+
+export type ReportTopic = 'gate' | 'canteen' | 'buffet' | 'fitness' | 'leave' | 'grant' | 'reward' | 'penalty' | 'medical' | 'security' | 'evaluation' | 'visitors' | 'roster';
+export interface ReportColumn { key: string; label: string; type?: 'text' | 'number' | 'money' | 'percent'; total?: boolean }
+export interface ReportTable { title: string; columns: ReportColumn[]; rows: Record<string, string | number | null>[] }
+export interface ReportKpi { label: string; value: number | string | null; unit?: string; previous?: number | null }
+export interface ReportSection { id: ReportTopic; title: string; kpis: ReportKpi[]; tables: ReportTable[] }
+export interface AnalyticReportQuery {
+  subject: 'unit' | 'company' | 'soldier';
+  soldierId?: string;
+  company?: string;
+  from: string;
+  to: string;
+  topics?: string;
+  compare?: '1';
+}
+export interface AnalyticReport {
+  title: string;
+  subject: { type: AnalyticReportQuery['subject']; label: string };
+  from: string;
+  to: string;
+  days: number;
+  previous: { from: string; to: string } | null;
+  generatedAt: string;
+  generatedBy: string;
+  unit: { name: string; parentFormation: string };
+  topics: ReportTopic[];
+  summary: ReportKpi[];
+  exceptions: ReportTable[];
+  profile: ReportTable | null;
+  sections: ReportSection[];
 }
 export interface ExcelWorkbookArg {
   fileName: string;
@@ -516,6 +552,11 @@ export interface DocumentArg {
   period?: ReportPeriod;
   /** soldier-file: print one section only */
   category?: PersonnelCategory;
+  /** analytic-report parameters */
+  query?: AnalyticReportQuery;
+  /** Sheet documents: send to this printer instead of the office printer in Settings. */
+  printer?: string;
+  printCopies?: number;
 }
 export interface DesktopBridge {
   info(): Promise<BridgeResult<AppInfo>>;

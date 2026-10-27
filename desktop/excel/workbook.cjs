@@ -85,7 +85,11 @@ async function buildWorkbook(sheets) {
     if (rows.length && sheet.columns.some((c) => c.total === 'sum')) {
       const totals = ws.addRow(
         sheet.columns.map((c, i) =>
-          c.total === 'sum' ? { formula: `SUM(${columnLetter(i + 1)}${first}:${columnLetter(i + 1)}${last})` } : i === 0 ? 'الإجمالي' : null,
+          c.total === 'sum'
+            ? { formula: `SUM(${columnLetter(i + 1)}${first}:${columnLetter(i + 1)}${last})` }
+            : i === 0
+              ? 'الإجمالي'
+              : null,
         ),
       );
       totals.font = { bold: true };
