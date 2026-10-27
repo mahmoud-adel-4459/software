@@ -4,7 +4,7 @@ const ExcelJS = require('exceljs');
 
 const MAX_ROWS = 100000;
 const HEADER_FILL = 'FF244B46';
-const MAX_SHEETS = 20;
+const MAX_SHEETS = 80;
 
 function checkSheets(sheets) {
   const bad = () => new Error('بيانات التصدير غير صالحة');
