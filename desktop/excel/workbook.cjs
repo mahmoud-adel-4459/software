@@ -42,35 +42,71 @@ function cellValue(value) {
   return String(value);
 }
 
+const NUMBER_FORMATS = { money: '#,##0.00 "ج.م"', percent: '0.0"%"', number: '#,##0.##' };
+const columnLetter = (n) => {
+  let s = '';
+  for (let x = n; x > 0; x = Math.floor((x - 1) / 26)) s = String.fromCharCode(65 + ((x - 1) % 26)) + s;
+  return s;
+};
+
+/**
+ * Optional per sheet: `title` lines above the table; per column: `format` (money | percent | number)
+ * and `total: 'sum'` for a SUM formula in a final «الإجمالي» row.
+ */
 async function buildWorkbook(sheets) {
   checkSheets(sheets);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'منظومة شؤون الوحدة الداخلية';
   const used = new Set();
   for (const sheet of sheets) {
+    const titles = Array.isArray(sheet.title) ? sheet.title.filter((t) => typeof t === 'string').slice(0, 5) : [];
+    const headerRow = titles.length ? titles.length + 2 : 1;
     const ws = workbook.addWorksheet(uniqueSheetName(sheet.name, used), {
-      views: [{ rightToLeft: true, state: 'frozen', ySplit: 1 }],
+      views: [{ rightToLeft: true, state: 'frozen', ySplit: headerRow }],
     });
-    ws.columns = sheet.columns.map((c) => ({ header: c.header, key: c.key }));
+    titles.forEach((text, i) => {
+      const cell = ws.getCell(i + 1, 1);
+      cell.value = text;
+      cell.font = { bold: true, size: i === 0 ? 14 : 11 };
+      ws.mergeCells(i + 1, 1, i + 1, Math.max(1, sheet.columns.length));
+    });
+    ws.getRow(headerRow).values = sheet.columns.map((c) => c.header);
     const widths = sheet.columns.map((c) => c.header.length);
-    for (const row of sheet.rows ?? []) {
+    const rows = sheet.rows ?? [];
+    for (const row of rows) {
       ws.addRow(sheet.columns.map((c) => cellValue(row[c.key])));
       sheet.columns.forEach((c, i) => {
         const v = row[c.key];
         if (v !== null && v !== undefined) widths[i] = Math.max(widths[i], String(v).length);
       });
     }
+    const first = headerRow + 1;
+    const last = headerRow + rows.length;
+    if (rows.length && sheet.columns.some((c) => c.total === 'sum')) {
+      const totals = ws.addRow(
+        sheet.columns.map((c, i) =>
+          c.total === 'sum' ? { formula: `SUM(${columnLetter(i + 1)}${first}:${columnLetter(i + 1)}${last})` } : i === 0 ? 'الإجمالي' : null,
+        ),
+      );
+      totals.font = { bold: true };
+      totals.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDF5F2' } };
+        cell.border = { top: { style: 'thin' } };
+      });
+    }
     sheet.columns.forEach((c, i) => {
-      ws.getColumn(i + 1).width = c.width ?? Math.min(60, Math.max(10, widths[i] + 4));
+      const column = ws.getColumn(i + 1);
+      column.width = c.width ?? Math.min(60, Math.max(10, widths[i] + 4));
+      if (NUMBER_FORMATS[c.format]) column.numFmt = NUMBER_FORMATS[c.format];
     });
-    const header = ws.getRow(1);
+    const header = ws.getRow(headerRow);
     header.height = 22;
     header.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
-    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
+    ws.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: headerRow, column: sheet.columns.length } };
   }
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
