@@ -76,7 +76,8 @@ export function navSections(session: Session | null): NavSection[] {
     {
       label: 'الإدارة',
       items: [
-        item('daily-report', '/daily-report', 'التقرير اليومي', 'لوحة نشاط اليوم الشاملة', DailyIcon),
+        item('report-center', '/report-center', 'مركز التقارير', 'تقرير تحليلي مفصل عن الوحدة أو سرية أو عسكري لأي فترة — طباعة و PDF و Excel', ChartIcon),
+        item('daily-report', '/daily-report', 'التقرير الشامل', 'لوحة نشاط يوم أو شهر أو سنة', DailyIcon),
         item('reports', '/reports', 'التقارير التفصيلية', 'ستة أنواع من التقارير مع تصدير CSV', ChartIcon),
         item('printing', '/printing', 'الطباعة', 'ملصقات QR وبطاقات العسكريين', PrintIcon),
         item('settings', '/settings', 'الإعدادات', 'الوحدة والطباعة ونقاط البيع والنسخ', SettingsIcon),

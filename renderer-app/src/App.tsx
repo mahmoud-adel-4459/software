@@ -31,6 +31,7 @@ const LedgerPage = page(() => import('@/features/canteen/LedgerPage'), 'LedgerPa
 const FitnessPage = page(() => import('@/features/fitness/FitnessPage'), 'FitnessPage');
 const ReportsPage = page(() => import('@/features/reports/ReportsPage'), 'ReportsPage');
 const DailyReportPage = page(() => import('@/features/reports/DailyReportPage'), 'DailyReportPage');
+const ReportCenterPage = page(() => import('@/features/reports/ReportCenterPage'), 'ReportCenterPage');
 const PrintingPage = page(() => import('@/features/printing/PrintingPage'), 'PrintingPage');
 const SettingsPage = page(() => import('@/features/settings/SettingsPage'), 'SettingsPage');
 const UsersPage = page(() => import('@/features/users/UsersPage'), 'UsersPage');
@@ -72,6 +73,7 @@ export function AppRoutes() {
               <Route path="/buffet" element={<LedgerPage kind="buffet" />} />
               <Route path="/fitness" element={<FitnessPage />} />
               <Route path="/daily-report" element={<DailyReportPage />} />
+              <Route path="/report-center" element={<ReportCenterPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/printing" element={<PrintingPage />} />
               <Route path="/settings" element={<SettingsPage />} />
