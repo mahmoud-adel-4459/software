@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { handle, write } from '@/common/http/route';
-import { findVisitorCard, listVisitorCards, moveVisitorCard } from './visitor-cards.service';
+import { findVisitorCard, listVisitorCards, listVisitorVisits, moveVisitorCard } from './visitor-cards.service';
 import {
   createCategoryHandler,
   createVisitorHandler,
@@ -14,6 +14,7 @@ import {
 
 export const visitorsRoutes = Router({ caseSensitive: true, strict: true });
 visitorsRoutes.get('/api/visitor-cards', handle('gate', listVisitorCards));
+visitorsRoutes.get('/api/visitor-visits', handle('gate', listVisitorVisits));
 visitorsRoutes.get('/api/gate/visitor-card', handle('gate', findVisitorCard));
 visitorsRoutes.post('/api/gate/visitor-card', write({
   path: '/api/gate/visitor-card', access: 'gate', audit: false,

@@ -4,7 +4,7 @@ import test from 'node:test';
 import { createTestApp } from './helpers';
 import { completeSoldierInput } from './soldier.fixture';
 
-test('registration requires all profile fields and all four images and saves them atomically', async (t) => {
+test('registration requires all profile fields, images are optional, and saves them atomically', async (t) => {
   const app = await createTestApp(t);
   const send = (data: unknown, requestId = randomUUID()) => app.send(app.internal, 'POST', '/api/soldiers', data, app.adminToken, requestId);
   const data = completeSoldierInput({ militaryNo: '000777888' });
@@ -13,9 +13,6 @@ test('registration requires all profile fields and all four images and saves the
   }
   for (const field of Object.keys(data.details)) {
     assert.equal((await send({ ...data, details: { ...data.details, [field]: '' } })).status, 400, `${field} is required`);
-  }
-  for (const photo of data.photos) {
-    assert.equal((await send({ ...data, photos: data.photos.filter((candidate) => candidate.kind !== photo.kind) })).status, 400, `${photo.kind} is required`);
   }
   const invalid = structuredClone(data);
   invalid.photos[3]!.content = Buffer.from('not an image').toString('base64');
@@ -34,9 +31,10 @@ test('registration requires all profile fields and all four images and saves the
   assert.equal(updated.version, 2);
   assert.equal(await app.backend.store.prisma.attachment.count(), 4, 'existing images are retained');
   await app.backend.store.prisma.attachment.deleteMany({ where: { soldier_id: created.body.id, kind: 'carnetBack' } });
-  const refused = await app.send(app.internal, 'POST', '/api/soldier/update', { ...update, version: 2, phone: '01222222222' }, app.adminToken);
-  assert.equal(refused.status, 400);
-  assert.equal((await app.backend.store.prisma.soldier.findUniqueOrThrow({ where: { id: created.body.id } })).phone, '01111111111');
-  await app.api('POST', '/api/soldier/update', { ...update, version: 2, photos: [data.photos[3]] });
+  await app.api('POST', '/api/soldier/update', { ...update, version: 2, phone: '01222222222' });
+  assert.equal((await app.backend.store.prisma.soldier.findUniqueOrThrow({ where: { id: created.body.id } })).phone, '01222222222', 'update without images succeeds');
+  await app.api('POST', '/api/soldier/update', { ...update, version: 3, photos: [data.photos[3]] });
   assert.equal(await app.backend.store.prisma.attachment.count(), 4);
+  const noPhotos = await send(completeSoldierInput({ militaryNo: '000777999', nationalId: '30101010101099', photos: [] }));
+  assert.equal(noPhotos.status, 201, 'images are optional');
 });

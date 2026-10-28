@@ -8,6 +8,7 @@ const GET_PATHS = [
   'soldier/records',
   'soldier/evaluation',
   'visitor-cards',
+  'visitor-visits',
   'gate/visitor-card',
   'soldiers',
   'soldier',

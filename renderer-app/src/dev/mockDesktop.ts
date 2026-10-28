@@ -143,6 +143,7 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
             return s ? ok({ soldier: s, photos: [{ id: 'att-1', kind: 'photo', mime: 'image/png' }] }) : fail('لا يوجد عسكري بهذا الرقم', 404);
           }
           case '/api/visitor-cards': return ok({ cards: visitorCards });
+          case '/api/visitor-visits': return ok({ visits: [] });
           case '/api/soldier/records': return ok({ records: personnelRecords.filter(r => r.soldier_id === params.get('soldierId')) });
           case '/api/gate/visitor-card': return ok(visitorCards.find(c => c.cardNo === Number(params.get('cardNo'))));
           case '/api/gate/visitor': return ok({ visitor: { ...state.visitors[0], category_id: 'c1', category_disabled: false }, openVisit: null });

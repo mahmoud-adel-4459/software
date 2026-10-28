@@ -10,7 +10,8 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
-import type { Permit } from '@/api/types';
+import { useQuery } from '@tanstack/react-query';
+import type { Permit, VisitorVisitRow } from '@/api/types';
 import { api } from '@/api/endpoints';
 import { KpiCard, PageHeader, SegmentedTabs } from '@/components/basic';
 import { DataTable, type Column } from '@/components/DataTable';
@@ -90,6 +91,36 @@ export function MovementsPage() {
       <Paper variant="outlined">
         <DataTable rows={rows} columns={columns} loading={permits.isFetching && !permits.data} emptyText="لا توجد حركات بوابة" emptyHint="سجل خروج عسكري من شاشة البوابة لعرض إذنه هنا." />
       </Paper>
+      <VisitorMovements />
     </>
+  );
+}
+
+/** Latest 200 visitor visits (cards and badges); polled so the unit sees gate check-ins/outs live. */
+function VisitorMovements() {
+  const visits = useQuery({ queryKey: ['visitor-visits'], queryFn: api.visitorVisits, refetchInterval: 10_000, refetchOnWindowFocus: true, refetchOnMount: 'always' });
+  const [q, setQ] = useState('');
+  const rows = (visits.data ?? []).filter((v) => !q || `${v.name} ${v.badge_no} ${v.organization} ${v.purpose}`.includes(q));
+  const inside = (visits.data ?? []).filter((v) => !v.check_out).length;
+  const columns: Column<VisitorVisitRow>[] = [
+    { field: 'name', headerName: 'الزائر', flex: 1.2, minWidth: 170, renderCell: (c) => <Stack><b>{c.row.name}</b><Typography variant="caption">{c.row.category_name}</Typography></Stack> },
+    { field: 'badge_no', headerName: 'البطاقة', width: 110, renderCell: (c) => <span className="num">{c.value}</span> },
+    { field: 'organization', headerName: 'الجهة', flex: 1, minWidth: 130, valueFormatter: (v: string) => v || '—' },
+    { field: 'purpose', headerName: 'سبب الزيارة', flex: 1, minWidth: 150 },
+    { field: 'check_in', headerName: 'الدخول', width: 160, valueFormatter: (v: string) => formatDateTime(v) },
+    { field: 'check_out', headerName: 'الخروج', width: 160, valueFormatter: (v: string | null) => (v ? formatDateTime(v) : 'لم يخرج بعد') },
+    { field: 'id', headerName: 'الحالة', width: 140, sortable: false, renderCell: (c) => <ToneChip tone={c.row.check_out ? 'success' : 'warning'} label={c.row.check_out ? 'خرج' : 'داخل الوحدة'} /> },
+  ];
+  return (
+    <Paper variant="outlined" sx={{ mt: 2.5 }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ p: 2, alignItems: { md: 'center' }, justifyContent: 'space-between' }}>
+        <Stack>
+          <Typography component="h2" variant="h5">حركة الزوار</Typography>
+          <Typography variant="caption">أحدث 200 زيارة · داخل الوحدة الآن: <b className="num">{formatNumber(inside)}</b> · تتحدث تلقائيًا</Typography>
+        </Stack>
+        <SearchField value={q} onChange={setQ} placeholder="بحث بالاسم أو البطاقة أو الجهة" />
+      </Stack>
+      <DataTable rows={rows} columns={columns} loading={visits.isPending} emptyText="لا توجد زيارات" emptyHint="سجّل دخول زائر من شاشة البوابة لعرضه هنا." />
+    </Paper>
   );
 }

@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import Box from '@mui/material/Box';
-import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import Skeleton from '@mui/material/Skeleton';
@@ -17,7 +16,7 @@ import { PageHeader, SectionCard } from '@/components/basic';
 import { RhfSelect, RhfText } from '@/components/Fields';
 import { notify } from '@/lib/notify';
 import { useCatalog } from '@/lib/queries';
-import { DATE_DETAIL_KEYS, DETAIL_FIELDS, NUMBER_DETAIL_KEYS, PHOTO_KINDS, parseDetails } from '@/lib/soldierProfile';
+import { DATE_DETAIL_KEYS, DETAIL_FIELDS, NUMBER_DETAIL_KEYS, parseDetails } from '@/lib/soldierProfile';
 import { PhotoSlots, useSavedPhotos, type PendingPhotos } from './shared';
 
 const detailShape = Object.fromEntries(Object.entries(DETAIL_FIELDS).map(([key, label]) => [key, z.string().trim().min(1, `${label} مطلوب`).max(['weaponNo', 'cardNo'].includes(key) ? 40 : 200).superRefine((value, ctx) => {
@@ -60,7 +59,6 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
   const catalog = useCatalog();
   const saved = useSavedPhotos(attachments);
   const [pending, setPending] = useState<PendingPhotos>({});
-  const [missingPhotos, setMissingPhotos] = useState<AttachmentKind[]>([]);
   const requestId = useRef<{ key: string; id: string } | null>(null);
   const d = parseDetails(soldier?.details);
   const { control, handleSubmit, formState } = useForm<Values>({
@@ -82,20 +80,12 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
       const bytes = Math.floor(file.content.length * 3 / 4) - (file.content.endsWith('==') ? 2 : file.content.endsWith('=') ? 1 : 0);
       if (bytes > 5 * 1024 * 1024) return notify.error('الصورة أكبر من 5 ميجابايت؛ اختر صورة أصغر');
       setPending((p) => ({ ...p, [kind]: file }));
-      setMissingPhotos((missing) => missing.filter((photoKind) => photoKind !== kind));
     } catch (e) {
       notify.apiError(e);
     }
   };
 
   const submit = handleSubmit(async (values) => {
-    const missing = PHOTO_KINDS.filter(([kind]) => !pending[kind] && !attachments?.some((attachment) => attachment.kind === kind)).map(([kind]) => kind);
-    setMissingPhotos(missing);
-    if (missing.length) {
-      notify.error('أضف الصور الأربع المطلوبة قبل حفظ العسكري');
-      document.querySelector<HTMLElement>('[data-photo-kind]')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-      return;
-    }
     const details: Record<string, string> = {};
     for (const k of Object.keys(DETAIL_FIELDS)) {
       details[k] = String((values as Record<string, unknown>)[k] ?? '');
@@ -155,8 +145,7 @@ function SoldierForm({ soldier, attachments }: { soldier?: Soldier; attachments?
           ))}
         </Grid>
       </SectionCard>
-      <SectionCard title="صور العسكري — مطلوبة" subtitle="صورة 4×6، البطاقة، وجه الكارنيه وظهره. PNG أو JPEG بحد أقصى 5 ميجابايت للصورة؛ الصور المحفوظة سابقًا لا تحتاج إعادة رفع.">
-        {missingPhotos.length > 0 && <Alert severity="error" sx={{ mb: 2 }}>الصور الناقصة: {PHOTO_KINDS.filter(([kind]) => missingPhotos.includes(kind)).map(([, label]) => label).join('، ')}</Alert>}
+      <SectionCard title="صور العسكري — اختيارية" subtitle="صورة 4×6، البطاقة، وجه الكارنيه وظهره. PNG أو JPEG بحد أقصى 5 ميجابايت للصورة؛ الصور المحفوظة سابقًا لا تحتاج إعادة رفع.">
         <PhotoSlots saved={saved.data} pending={pending} onPick={pick} onClear={(k) => setPending((p) => { const n = { ...p }; delete n[k]; return n; })} />
       </SectionCard>
       <Stack direction="row" spacing={1}>

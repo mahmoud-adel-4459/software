@@ -28,7 +28,7 @@ export function VisitorCardPanel({ cardNo, onClear }: { cardNo: number; onClear:
   const move = useIdempotentPost<Movement>('/api/gate/visitor-card', {
     onSuccess: async (_result, vars) => {
       notify.success(vars.action === 'in' ? 'تم تسجيل دخول الزائر' : 'تم تسجيل الخروج وأصبحت البطاقة متاحة');
-      await Promise.all(['visitor-card', 'visitor-cards', 'visitors', 'reports', 'daily-report', 'dashboard'].map(key =>
+      await Promise.all(['visitor-card', 'visitor-cards', 'visitor-visits', 'visitors', 'report', 'daily-report', 'dashboard'].map(key =>
         queryClient.invalidateQueries({ queryKey: [key] })));
       onClear();
     },

@@ -4,7 +4,7 @@ import type { Ctx } from '@/common/http/types';
 import { cell, eachRow, importRows } from '@/common/utils/bulk';
 import { DETAIL_FIELD_KEYS } from '@/common/utils/catalog';
 import type { Tx } from '@/config/prisma';
-import { newSoldierInput, soldierPhotos, requireSoldierPhotos } from './soldiers.validator';
+import { newSoldierInput, soldierPhotos } from './soldiers.validator';
 import { addAttachment } from './attachments.service';
 
 const FIELDS = ['name', 'militaryNo', 'nationalId', 'rank', 'militaryRank', 'company', 'unit', 'subUnit', 'phone', 'address'];
@@ -19,7 +19,6 @@ export async function importSoldiers(tx: Tx, ctx: Ctx) {
     data.details = Object.fromEntries(DETAIL_FIELD_KEYS.map((k) => [k, cell(row, k)]));
     const soldier = newSoldierInput(data);
     const photos = soldierPhotos(row.photos);
-    requireSoldierPhotos(photos.map((photo) => photo.kind as string));
     requireValue(!known.has(soldier.militaryNo), 'الرقم العسكري مسجل مسبقًا');
     const created = await tx.soldier.create({
       data: {

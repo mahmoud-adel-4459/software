@@ -187,6 +187,18 @@ export interface GateVisitorResponse {
   openVisit: { id: string; purpose: string; check_in: string } | null;
 }
 
+export interface VisitorVisitRow {
+  id: string;
+  name: string;
+  badge_no: string;
+  organization: string;
+  category_name: string;
+  purpose: string;
+  check_in: string;
+  check_out: string | null;
+  entry_notes: string;
+}
+
 export interface VisitorCard {
   cardNo: number;
   openVisit: {

@@ -325,7 +325,7 @@ function VisitorPanel({ id, onClear }: { id: string; onClear: () => void }) {
     onSuccess: async (_r, vars) => {
       notify.success(vars.action === 'in' ? 'تم تسجيل دخول الزائر' : 'تم تسجيل خروج الزائر');
       setText('');
-      await queryClient.invalidateQueries({ queryKey: ['gate-visitor', id] });
+      await Promise.all(['gate-visitor', 'visitor-visits', 'report', 'daily-report', 'dashboard'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })));
     },
     onError: notify.apiError,
   });

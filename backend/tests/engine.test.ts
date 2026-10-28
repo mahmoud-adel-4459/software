@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import test from 'node:test';
 import { applyMigrations, readMigrations } from '@/config/migrator';
 import { openRaw } from '@/config/prisma';
@@ -141,6 +141,13 @@ test('data survives a restart; migrations are idempotent and checksummed', async
     const rows = raw.prepare('SELECT name FROM _migrations').all();
     assert.equal(rows.length, readMigrations().length);
     assert.deepEqual(applyMigrations(raw), []);
+    // A database created by a build whose checkout used the other line ending still opens.
+    const hash = (text: string) => createHash('sha256').update(text).digest('hex');
+    for (const eol of ['\n', '\r\n']) {
+      const update = raw.prepare('UPDATE _migrations SET checksum = ? WHERE name = ?');
+      for (const file of readMigrations()) update.run(hash(file.sql.replace(/\r\n/g, '\n').replace(/\n/g, eol)), file.name);
+      assert.deepEqual(applyMigrations(raw), []);
+    }
     raw.prepare("UPDATE _migrations SET checksum = 'tampered'").run();
     assert.throws(() => applyMigrations(raw), /modified/);
     raw.prepare("INSERT INTO _migrations (name, checksum, applied_at) VALUES ('99999999_future', 'x', 'x')").run();

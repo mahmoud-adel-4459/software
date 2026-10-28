@@ -56,7 +56,7 @@ export function ReportsPage() {
   const type = reports.some((r) => r.id === draft.type) ? draft.type : (reports[0]?.id as ReportType | undefined) ?? draft.type;
   const meta = reports.find((r) => r.id === type);
   const filter = applied ?? { ...draft, type };
-  const data = useQuery({ queryKey: ['report', filter], queryFn: () => api.report(filter), enabled: Boolean(meta), retry: false });
+  const data = useQuery({ queryKey: ['report', filter], queryFn: () => api.report(filter), enabled: Boolean(meta), retry: false, refetchInterval: 30_000, refetchOnWindowFocus: true });
   const [correcting, setCorrecting] = useState<Row | null>(null);
   const [reason, setReason] = useState('');
   const correct = useIdempotentPost<{ eventId: string; reason: string }>('/api/gate/correct', {

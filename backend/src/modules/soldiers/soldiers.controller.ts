@@ -2,7 +2,7 @@ import { requireClerkOrAdmin } from '@/common/http/access';
 import { handle, write } from '@/common/http/route';
 import { archiveSoldier, getSoldier, listSoldiers, updateSoldier } from './soldiers.service';
 import { importSoldiers } from './soldiers.import';
-import { newSoldierInput, soldierPhotos, requireSoldierPhotos } from './soldiers.validator';
+import { newSoldierInput, soldierPhotos } from './soldiers.validator';
 import { addAttachment } from './attachments.service';
 
 /** Gate stations may search soldiers; internal PCs only for admin/clerk accounts. */
@@ -17,9 +17,7 @@ export const createSoldierHandler = write({
   access: 'admin',
   prepare: (ctx) => {
     const soldier = newSoldierInput(ctx.data);
-    const photos = soldierPhotos(ctx.data.photos);
-    requireSoldierPhotos(photos.map((photo) => photo.kind as string));
-    return { ...soldier, photos };
+    return { ...soldier, photos: soldierPhotos(ctx.data.photos) };
   },
   audit: false, // store.createSoldier writes its own 'soldier.create' audit row.
   execute: async (tx, soldier, { store, actor }) => {

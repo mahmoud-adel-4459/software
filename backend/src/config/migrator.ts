@@ -29,8 +29,18 @@ export function readMigrations(dir = migrationsDir()): MigrationFile[] {
     .sort()
     .map((name) => {
       const sql = fs.readFileSync(path.join(dir, name, 'migration.sql'), 'utf8');
-      return { name, sql, checksum: createHash('sha256').update(sql).digest('hex') };
+      return { name, sql, checksum: sha256(sql.replace(/\r\n/g, '\n')) };
     });
+}
+
+function sha256(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
+}
+
+/** Checksums an older build may have stored for the same SQL: git checkouts differ only in LF vs CRLF. */
+function sameMigration(stored: string, file: MigrationFile): boolean {
+  const lf = file.sql.replace(/\r\n/g, '\n');
+  return [file.checksum, sha256(file.sql), sha256(lf.replace(/\n/g, '\r\n'))].includes(stored);
 }
 
 /** Applies pending migrations (equivalent of `prisma migrate deploy`) tracked in the `_migrations` table. */
@@ -50,7 +60,7 @@ export function applyMigrations(db: BetterSqlite3.Database, files = readMigratio
   for (const file of files) {
     const known = applied.get(file.name);
     if (known !== undefined) {
-      if (known !== file.checksum) throw new Error(`Migration ${file.name} was modified after being applied`);
+      if (!sameMigration(known, file)) throw new Error(`Migration ${file.name} was modified after being applied`);
       continue;
     }
     db.transaction(() => {

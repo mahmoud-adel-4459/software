@@ -22,6 +22,29 @@ export async function listVisitorCards({ store }: Ctx) {
   return { cards: Array.from({ length: 24 }, (_, i) => ({ cardNo: i + 1, openVisit: visits.find(v => v.card_no === i + 1) ?? null })) };
 }
 
+/** Latest 200 visits (card and badge) with check-in / check-out, for the live movements screen. */
+export async function listVisitorVisits({ store }: Ctx) {
+  const rows = await store.prisma.visitorVisit.findMany({
+    where: { voided: false },
+    include: { visitor: { include: { category: true } } },
+    orderBy: { check_in: 'desc' },
+    take: 200,
+  });
+  return {
+    visits: rows.map((v) => ({
+      id: v.id,
+      name: v.visitor.name,
+      badge_no: v.card_no == null ? v.visitor.badge_no : String(v.card_no),
+      organization: v.visitor.organization,
+      category_name: v.visitor.category.name,
+      purpose: v.purpose,
+      check_in: v.check_in,
+      check_out: v.check_out,
+      entry_notes: v.entry_notes,
+    })),
+  };
+}
+
 /** Looks up the current occupant without reusing any previous visitor's personal details. */
 export async function findVisitorCard(ctx: Ctx) {
   const cardNo = cardNumber(param(ctx, 'cardNo'));

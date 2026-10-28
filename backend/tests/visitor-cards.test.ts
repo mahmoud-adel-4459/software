@@ -24,6 +24,11 @@ test('24 reusable cards preserve each occupant, prevent conflicts, and survive b
   assert.equal((await send(internal, 'POST', path, { cardNo: 1, action: 'out', visitId: randomUUID() }, adminToken)).status, 409);
   await api('POST', path, { cardNo: 1, action: 'out', visitId: first.id, notes: 'Returned' });
   assert.equal((await api('GET', '/api/gate/visitor-card?cardNo=1')).openVisit, null);
+  // The live movements list keeps the finished visit with both times.
+  const moved = (await api('GET', '/api/visitor-visits')).visits.find((v: { id: string }) => v.id === first.id);
+  assert.equal(moved.name, 'First visitor');
+  assert.equal(moved.badge_no, '1');
+  assert.ok(moved.check_in && moved.check_out);
   const second = await api('POST', path, { ...body, name: 'Second visitor', organization: 'Second company', nationalId: '' });
   assert.notEqual(first.visit.visitor_id, second.visit.visitor_id);
   assert.equal((await send(internal, 'POST', path, { cardNo: 1, action: 'out', visitId: first.id }, adminToken)).status, 409);
@@ -53,5 +58,9 @@ test('24 reusable cards preserve each occupant, prevent conflicts, and survive b
   await api('POST', '/api/admin/users', { username: 'cashier-test', name: 'Cashier', role: 'clerk', password: 'cashier-password-12' });
   const clerk = await app.login(internal, 'cashier-test', 'cashier-password-12');
   assert.equal((await send(internal, 'GET', '/api/visitor-cards', {}, clerk)).status, 403);
+  assert.equal((await send(internal, 'GET', '/api/visitor-visits', {}, clerk)).status, 403);
+  await api('POST', '/api/admin/users', { username: 'gate-visits', name: 'Gate', role: 'gate', password: 'gate-password-12' });
+  const gateToken = await app.login(app.gate, 'gate-visits', 'gate-password-12');
+  assert.equal((await send(app.gate, 'GET', '/api/visitor-visits', {}, gateToken)).status, 200);
   assert.equal((await send(internal, 'POST', path, { ...body, cardNo: 3 }, clerk)).status, 403);
 });

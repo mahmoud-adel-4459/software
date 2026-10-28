@@ -41,7 +41,7 @@ const PERIOD_TITLES: Record<ReportPeriod, string> = { day: 'التقرير ال�
 export function DailyReportPage() {
   const [date, setDate] = useState(todayCairo());
   const [period, setPeriod] = useState<ReportPeriod>('day');
-  const q = useQuery({ queryKey: ['daily-report', date, period], queryFn: () => api.dailyReport(date, period) });
+  const q = useQuery({ queryKey: ['daily-report', date, period], queryFn: () => api.dailyReport(date, period), refetchInterval: 30_000, refetchOnWindowFocus: true });
   const r = q.data;
   const s = r?.snapshot.soldiers;
   const g = r?.activity.gate;

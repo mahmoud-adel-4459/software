@@ -2,7 +2,8 @@ import { requireValue } from '@/common/errors/AppError';
 import type { Input } from '@/common/http/types';
 import { attachmentBytes, soldierDetails, text } from '@/common/utils/validation';
 
-export const REQUIRED_PHOTOS: Record<string, string> = { photo: 'صورة 4×6', idPhoto: 'صورة البطاقة', carnetFront: 'وجه الكارنيه العسكري', carnetBack: 'ظهر الكارنيه العسكري' };
+// Optional; each kind may be uploaded at most once.
+export const SOLDIER_PHOTOS: Record<string, string> = { photo: 'صورة 4×6', idPhoto: 'صورة البطاقة', carnetFront: 'وجه الكارنيه العسكري', carnetBack: 'ظهر الكارنيه العسكري' };
 const REQUIRED_DETAILS: Record<string, string> = { cardNo: 'رقم البطاقة', originalUnit: 'الوحدة الأصلية', specialty: 'التخصص', enlistDate: 'تاريخ التجنيد', dischargeDate: 'تاريخ التسريح', weaponNo: 'رقم السلاح', unitJoinDate: 'تاريخ الضم على الوحدة', birthDate: 'تاريخ الميلاد', height: 'الطول', weight: 'الوزن', age: 'العمر', offDutyJob: 'الوظيفة خارج الوحدة' };
 
 export function soldierPhotos(value: unknown): Input[] {
@@ -10,7 +11,7 @@ export function soldierPhotos(value: unknown): Input[] {
   requireValue(Array.isArray(photos) && photos.length <= 4, 'صور العسكري غير صالحة');
   const kinds = new Set<string>();
   for (const photo of photos) {
-    requireValue(photo && typeof photo === 'object' && Object.hasOwn(REQUIRED_PHOTOS, photo.kind), 'نوع صورة العسكري غير صالح');
+    requireValue(photo && typeof photo === 'object' && Object.hasOwn(SOLDIER_PHOTOS, photo.kind), 'نوع صورة العسكري غير صالح');
     requireValue(!kinds.has(photo.kind), 'نوع صورة العسكري مكرر');
     kinds.add(photo.kind);
     requireValue(['image/png', 'image/jpeg'].includes(photo.mime), 'صور العسكري يجب أن تكون PNG أو JPEG');
@@ -18,11 +19,6 @@ export function soldierPhotos(value: unknown): Input[] {
     text(photo.name, 200, true);
   }
   return photos;
-}
-
-export function requireSoldierPhotos(kinds: string[]): void {
-  const missing = Object.keys(REQUIRED_PHOTOS).filter((kind) => !kinds.includes(kind));
-  requireValue(!missing.length, `صور العسكري مطلوبة: ${missing.map((kind) => REQUIRED_PHOTOS[kind]).join('، ')}`);
 }
 
 export const NATIONAL_ID = /^\d{14}$/;

@@ -5,7 +5,7 @@ import defaults from '../../../tests/fixtures/complete-soldier.json';
 import { DETAIL_FIELDS } from '@/lib/soldierProfile';
 import { renderApp } from './harness';
 
-it('requires every field and all four photos, then saves them in one request', async () => {
+it('requires every field (photos optional), then saves them in one request', async () => {
   const fake = await renderApp('/soldiers/new');
   await screen.findByRole('heading', { name: 'إضافة عسكري', level: 1 });
   await userEvent.click(screen.getByRole('button', { name: 'حفظ العسكري' }));
@@ -23,9 +23,6 @@ it('requires every field and all four photos, then saves them in one request', a
     await userEvent.click(screen.getByRole('combobox', { name: new RegExp(`^${label}`) }));
     await userEvent.click(await screen.findByRole('option', { name: choice }));
   }
-  await userEvent.click(screen.getByRole('button', { name: 'حفظ العسكري' }));
-  expect(await screen.findByText(/الصور الناقصة:/)).toBeInTheDocument();
-  expect(fake.calls.some((call) => call.method === 'POST')).toBe(false);
   for (const photo of defaults.photos) {
     fake.pickAttachment = async () => ({ ok: true, data: photo });
     const slot = document.querySelector(`[data-photo-kind="${photo.kind}"]`) as HTMLElement;
