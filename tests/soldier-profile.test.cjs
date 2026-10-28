@@ -51,3 +51,15 @@ test('visitor QR survives numeric scanner input and legacy Arabic keyboard layou
   }
   assert.deepEqual(parseGateScan('99' + '9'.repeat(39)), { kind: 'none' });
 });
+
+test('printed visitor pass QR decodes to the pass, never to a visitor badge or soldier', async () => {
+  const { buildVisitorPassQrPayload, buildVisitorQrPayload, parseGateScan } = require('../shared/soldier-profile.cjs');
+  const id = '0f8fad5b-d9cb-469f-a165-70867728950e';
+  const payload = buildVisitorPassQrPayload({ id });
+  assert.match(payload, /^88[0-9]{39}$/);
+  assert.equal(payload.slice(2), buildVisitorQrPayload({ id }).slice(2));
+  const png = PNG.sync.read(await QRCode.toBuffer(payload, { width: 420, margin: 2 }));
+  const decoded = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+  assert.deepEqual(parseGateScan(decoded.data), { kind: 'visitor-pass', id });
+  assert.throws(() => buildVisitorPassQrPayload({ id: 'not-a-uuid' }));
+});

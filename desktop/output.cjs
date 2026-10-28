@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const QRCode = require('qrcode');
-const { buildQrPayload, buildVisitorQrPayload } = require('../shared/soldier-profile.cjs');
+const { buildQrPayload, buildVisitorQrPayload, buildVisitorPassQrPayload } = require('../shared/soldier-profile.cjs');
 const geometry = require('./documents/geometry.cjs');
 const { createPrinterHealthCache, validatePrinter, sendPrintJob } = require('./print-job.cjs');
 const {
@@ -17,6 +17,7 @@ const {
   testReceipt,
   testOffice,
   voucher,
+  visitorPass,
   canteenReceipt,
   canteenStatement,
   soldierFile,
@@ -313,6 +314,7 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       'qr',
       'visitor-qr',
       'voucher',
+      'visitor-pass',
       'report',
       'daily-report',
       'canteen',
@@ -347,7 +349,11 @@ function registerOutput({ expose, app, BrowserWindow, dialog, window: windowProv
       body = dailyReportHtml(await api('GET', `/api/reports/daily${q}`));
     } else if (arg.type === 'voucher')
       body = voucher(await api('GET', `/api/permit?id=${encodeURIComponent(arg.id)}`), printedBy);
-    else if (arg.type === 'canteen') {
+    else if (arg.type === 'visitor-pass') {
+      const pass = await api('GET', `/api/visitor-pass?id=${encodeURIComponent(arg.id)}`);
+      if (pass.status !== 'approved') throw new Error('يُطبع التصريح بعد اعتماده فقط');
+      body = visitorPass(pass, await QRCode.toDataURL(buildVisitorPassQrPayload(pass), QR_OPTIONS), printedBy);
+    } else if (arg.type === 'canteen') {
       if (!arg.id) throw new Error('معرف العملية مطلوب');
       receipt = await api('GET', `/api/canteen/transaction?id=${encodeURIComponent(arg.id)}`);
       body = canteenReceipt(receipt, printedBy);

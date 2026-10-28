@@ -161,6 +161,34 @@ function voucher(permit, printedBy = '') {
   ]);
 }
 
+// ---- Visitor pass (gate request approved by the unit) --------------------------------------
+
+/** `qr` is the data-URL of the pass QR that the gate scans to admit and later release the visitor. */
+function visitorPass(pass, qr, printedBy = '') {
+  return join([
+    `<section class="rcpt"><h2>تصريح دخول زائر رقم ${esc(pass.no)}</h2>`,
+    `<img class="pass-qr" src="${esc(qr)}" alt="QR">`,
+    `<div class="t"><strong>${esc(pass.name)}</strong></div>`,
+    sep,
+    line('الرقم القومي', pass.national_id),
+    line('الجهة', pass.organization),
+    line('الفئة', pass.category_name),
+    line('الجهة المقصودة', pass.host),
+    line('سبب الزيارة', pass.purpose),
+    sep,
+    line('وقت الطلب', cell('at', pass.requested_at)),
+    line('وقت الاعتماد', cell('at', pass.decided_at)),
+    line('صالح حتى', cell('at', pass.expires_at)),
+    line('اعتمده', pass.decided_by_name),
+    line('ملاحظات الوحدة', pass.decision_notes),
+    sep,
+    '<div class="t"><strong>يُمسح عند البوابة للدخول ومرة أخرى عند الخروج</strong></div>',
+    `<div class="sign">${signLine('مسؤول الوحدة')}${signLine('ختم الوحدة')}</div>`,
+    line('طُبع بواسطة', printedBy),
+    '</section>',
+  ]);
+}
+
 // ---- Canteen -------------------------------------------------------------------------------
 
 const outletWord = (kind) => (kind === 'buffet' ? 'بوفيه' : 'كانتين');
@@ -494,6 +522,7 @@ module.exports = {
   testReceipt,
   testOffice,
   voucher,
+  visitorPass,
   canteenReceipt,
   canteenStatement,
   dailyReportHtml,

@@ -97,7 +97,7 @@ export function gateProfileRows(soldier: Soldier): { label: string; value: strin
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export type GateScan = { kind: 'visitor-card'; cardNo: number } | { kind: 'none' } | { kind: 'visitor'; id: string } | { kind: 'soldier'; militaryNo: string };
+export type GateScan = { kind: 'visitor-card'; cardNo: number } | { kind: 'none' } | { kind: 'visitor'; id: string } | { kind: 'visitor-pass'; id: string } | { kind: 'soldier'; militaryNo: string };
 
 /** Interprets scanner/keyboard input: Arabic-Indic digits, JSON payloads, UUID visitor ids, plain numbers. */
 export function parseGateScan(raw: unknown): GateScan {
@@ -120,11 +120,12 @@ export function parseGateScan(raw: unknown): GateScan {
     }
   }
   // 41 digits cannot collide with military numbers (at most 30 digits).
-  if (/^99[0-9]{39}$/.test(text)) {
+  // 99… = visitor badge, 88… = printed visitor pass (gate request approved by the unit).
+  if (/^(?:99|88)[0-9]{39}$/.test(text)) {
     const hex = BigInt(text.slice(2)).toString(16).padStart(32, '0');
     if (hex.length === 32) {
       const id = [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
-      return { kind: 'visitor', id };
+      return text.startsWith('88') ? { kind: 'visitor-pass', id } : { kind: 'visitor', id };
     }
     return { kind: 'none' };
   }

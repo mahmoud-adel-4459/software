@@ -15,6 +15,7 @@ const MODE_BY_KIND = {
   'soldier-file': 'memo',
   'analytic-report': 'memo',
   voucher: 'receipt',
+  'visitor-pass': 'receipt',
   canteen: 'receipt',
 };
 const modeOf = (kind) => MODE_BY_KIND[kind] || 'office';

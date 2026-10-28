@@ -27,6 +27,8 @@ const SoldiersPage = page(() => import('@/features/soldiers/SoldiersPage'), 'Sol
 const SoldierProfilePage = page(() => import('@/features/soldiers/SoldierProfilePage'), 'SoldierProfilePage');
 const SoldierFormPage = page(() => import('@/features/soldiers/SoldierFormPage'), 'SoldierFormPage');
 const VisitorsPage = page(() => import('@/features/visitors/VisitorsPage'), 'VisitorsPage');
+const VisitorPassesPage = page(() => import('@/features/visitor-passes/VisitorPassesPage'), 'VisitorPassesPage');
+const GateVisitorRequestsPage = page(() => import('@/features/visitor-passes/GateVisitorRequestsPage'), 'GateVisitorRequestsPage');
 const LedgerPage = page(() => import('@/features/canteen/LedgerPage'), 'LedgerPage');
 const FitnessPage = page(() => import('@/features/fitness/FitnessPage'), 'FitnessPage');
 const ReportsPage = page(() => import('@/features/reports/ReportsPage'), 'ReportsPage');
@@ -69,6 +71,8 @@ export function AppRoutes() {
               <Route path="/soldiers/:id" element={<SoldierProfilePage />} />
               <Route path="/soldiers/:id/edit" element={<SoldierFormPage />} />
               <Route path="/visitors" element={<VisitorsPage />} />
+              <Route path="/visitor-passes" element={<VisitorPassesPage />} />
+              <Route path="/gate/visitors" element={<GateVisitorRequestsPage />} />
               <Route path="/canteen" element={<LedgerPage kind="canteen" />} />
               <Route path="/buffet" element={<LedgerPage kind="buffet" />} />
               <Route path="/fitness" element={<FitnessPage />} />

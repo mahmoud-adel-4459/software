@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { VisitorCardPanel } from './VisitorCardPanel';
+import { VisitorPassPanel } from '@/features/visitor-passes/VisitorPassPanel';
 import { api } from '@/api/endpoints';
 import type { GateMovementResult, Permit, Soldier } from '@/api/types';
 import { DetailList, KpiCard, SectionCard } from '@/components/basic';
@@ -29,7 +30,7 @@ import { gateProfileRows, parseGateScan, PHOTO_KINDS } from '@/lib/soldierProfil
 import { TIER_LABELS } from '@/lib/format';
 import { toneColors, tokens } from '@/theme/tokens';
 
-type Target = { kind: 'soldier'; militaryNo: string } | { kind: 'visitor'; id: string } | { kind: 'visitor-card'; cardNo: number } | null;
+type Target = { kind: 'soldier'; militaryNo: string } | { kind: 'visitor'; id: string } | { kind: 'visitor-pass'; id: string } | { kind: 'visitor-card'; cardNo: number } | null;
 
 /** Gate POS: large scan field (always focused), soldier/visitor panels and exit/entry forms. */
 export function GatePage() {
@@ -61,6 +62,7 @@ export function GatePage() {
       {target?.kind === 'visitor-card' && <VisitorCardPanel key={target.cardNo} cardNo={target.cardNo} onClear={clearTarget} />}
       {target?.kind === 'soldier' && <SoldierPanel militaryNo={target.militaryNo} onClear={() => setTarget(null)} onPermit={setLastPermit} />}
       {target?.kind === 'visitor' && <VisitorPanel id={target.id} onClear={() => setTarget(null)} />}
+      {target?.kind === 'visitor-pass' && <VisitorPassPanel key={target.id} id={target.id} onClear={() => setTarget(null)} />}
     </Box>
   );
 }
@@ -97,7 +99,7 @@ function ScanPanel({ onScan }: { onScan: (t: Target) => void }) {
               <QrIcon sx={{ fontSize: 52 }} />
             </Box>
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h3">امسح بطاقة العسكري أو الزائر</Typography>
+              <Typography variant="h3">امسح بطاقة العسكري أو الزائر أو تصريح الزائر</Typography>
               <Typography color="text.secondary"><span className="live-pulse-dot" style={{ background: tokens.green, marginInlineEnd: 8 }} />المحطة جاهزة — قارئ USB يملأ الحقل تلقائيًا</Typography>
             </Box>
             <TextField

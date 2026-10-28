@@ -31,6 +31,8 @@ model User {
   legacy_imports       LegacyImport[]
   visitor_visits       VisitorVisit[]
   personnel_records    SoldierPersonnelRecord[]
+  requested_passes     VisitorPass[]            @relation("pass_requester")
+  decided_passes       VisitorPass[]            @relation("pass_decider")
 
   @@map("users")
 }
@@ -268,6 +270,7 @@ model VisitorCategory {
   disabled   Boolean @default(false)
 
   visitors Visitor[]
+  passes   VisitorPass[]
 
   @@map("visitor_categories")
 }
@@ -303,8 +306,9 @@ model VisitorVisit {
   request_id  String?
   voided      Boolean   @default(false)
 
-  visitor Visitor @relation(fields: [visitor_id], references: [id])
-  creator User?   @relation(fields: [created_by], references: [id])
+  visitor Visitor      @relation(fields: [visitor_id], references: [id])
+  creator User?        @relation(fields: [created_by], references: [id])
+  pass    VisitorPass?
 
   // Real index is PARTIAL: WHERE check_out IS NULL AND voided = 0 (see migration.sql).
   @@unique([visitor_id], map: "visitor_open_visit")
@@ -312,6 +316,34 @@ model VisitorVisit {
   // Partial unique index: only an open, non-voided visit occupies a reusable card.
   @@unique([card_no], map: "visitor_card_open_visit")
   @@map("visitor_visits")
+}
+
+/// Gate request -> unit approval -> printed QR pass -> gate admission (status values: CHECK in migration.sql).
+model VisitorPass {
+  id             String    @id
+  no             Int       @unique
+  name           String
+  national_id    String    @default("")
+  phone          String    @default("")
+  organization   String    @default("")
+  category_id    String
+  host           String    @default("")
+  purpose        String
+  status         String    @default("pending")
+  requested_by   String
+  requested_at   DateTime  @default(now())
+  decided_by     String?
+  decided_at     DateTime?
+  decision_notes String    @default("")
+  visit_id       String?   @unique
+
+  category  VisitorCategory @relation(fields: [category_id], references: [id])
+  requester User            @relation("pass_requester", fields: [requested_by], references: [id])
+  decider   User?           @relation("pass_decider", fields: [decided_by], references: [id], onDelete: SetNull)
+  visit     VisitorVisit?   @relation(fields: [visit_id], references: [id], onDelete: SetNull)
+
+  @@index([status, requested_at], map: "visitor_passes_status_requested_at")
+  @@map("visitor_passes")
 }
 
 /// Named monotonic counters (permits.no, gate_events.sequence), bumped inside the writing transaction.

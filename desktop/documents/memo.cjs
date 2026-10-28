@@ -15,7 +15,7 @@ function memoDocument({ title, body, settings, fontUrl, defaultLogo }) {
     return (
       `<section class="memo-signature ${side.toLowerCase()}"><div class="signature-label">التوقيع / <span>........................</span></div>` +
       `<div>${esc(settings[`memo${side}Rank`] || rank)} / ${esc(name)}</div>` +
-      `<div>${esc(settings[`memo${side}Role`] || role)}</div><div>${esc(unit)}</div></section>`
+      `<div class="signature-role">${esc(settings[`memo${side}Role`] || role)} ${esc(unit)}</div></section>`
     );
   };
   const css = `
@@ -39,7 +39,8 @@ function memoDocument({ title, body, settings, fontUrl, defaultLogo }) {
     td,th{border:.2mm solid #555;padding:1.4mm 1mm;text-align:right;overflow-wrap:anywhere}
     thead{display:table-header-group}tr{break-inside:avoid}h1,h2{break-after:avoid}
     .memo-footer{position:absolute;bottom:13mm;left:20mm;right:20mm;height:42mm;overflow:hidden;z-index:2;font-size:10pt;font-weight:bold;line-height:1.3}
-    .memo-signature{position:absolute;max-width:48%;text-align:right}.memo-signature.right{right:0;top:0}.memo-signature.left{left:0;bottom:0}
+    .memo-signature{position:absolute;max-width:100%;text-align:right}.memo-signature.right{right:0;top:0}.memo-signature.left{left:0;bottom:0}
+    .signature-role{white-space:nowrap}
     .signature-label{margin-bottom:1mm}.signature-label span{display:inline-block;min-width:32mm}
     @media screen{html{background:#e8eaf0}body{width:210mm;margin:8mm auto}.memo-page{margin-bottom:8mm;box-shadow:0 1mm 5mm #0002}}
   `;

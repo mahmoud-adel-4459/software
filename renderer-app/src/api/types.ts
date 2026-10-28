@@ -187,6 +187,32 @@ export interface GateVisitorResponse {
   openVisit: { id: string; purpose: string; check_in: string } | null;
 }
 
+export type VisitorPassStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'inside' | 'completed';
+/** Gate request -> unit approval -> printed QR pass -> gate scan (in, then out). */
+export interface VisitorPass {
+  id: string;
+  no: number;
+  name: string;
+  national_id: string;
+  phone: string;
+  organization: string;
+  category_id: string;
+  category_name: string;
+  category_tier: VisitorTier;
+  host: string;
+  purpose: string;
+  status: VisitorPassStatus;
+  expired: boolean;
+  expires_at: string | null;
+  requested_at: string;
+  requested_by_name: string;
+  decided_at: string | null;
+  decided_by_name: string;
+  decision_notes: string;
+  check_in: string | null;
+  check_out: string | null;
+}
+
 export interface VisitorCard {
   cardNo: number;
   openVisit: {

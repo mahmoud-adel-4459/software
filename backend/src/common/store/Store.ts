@@ -177,7 +177,7 @@ export class Store {
   }
 
   /** Next value of a named counter (permits.no, gate_events.sequence), bumped inside the caller's transaction. */
-  async nextCounter(tx: Tx, name: 'permits.no' | 'gate_events.sequence'): Promise<number> {
+  async nextCounter(tx: Tx, name: 'permits.no' | 'gate_events.sequence' | 'visitor_passes.no'): Promise<number> {
     const rows = await tx.$queryRawUnsafe<{ value: number | bigint }[]>(
       'UPDATE counters SET value = value + 1 WHERE name = ? RETURNING value',
       name,

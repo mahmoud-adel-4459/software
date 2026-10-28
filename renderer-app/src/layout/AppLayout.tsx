@@ -24,6 +24,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { navSections } from '@/auth/nav';
 import { CommandPalette } from '@/components/CommandPalette';
+import { VisitorPassAlert } from '@/features/visitor-passes/shared';
 import { ROLE_LABELS } from '@/lib/format';
 import { tokens } from '@/theme/tokens';
 import { Logo, SIDEBAR_COLLAPSED, SIDEBAR_WIDTH, SidebarContent } from './Sidebar';
@@ -108,6 +109,7 @@ export function AppLayout() {
               </>
             )}
           </Stack>
+          <VisitorPassAlert session={session} />
           {deviceRejected && <Chip size="small" icon={<WifiOffIcon />} label="جهاز غير معتمد" sx={{ bgcolor: tokens.redSoft, color: tokens.redInk }} />}
           <Button onClick={() => setPalette(true)} startIcon={<SearchIcon />} sx={{ display: { xs: 'none', md: 'inline-flex' }, width: 300, justifyContent: 'flex-start', bgcolor: tokens.surface, border: `1px solid ${tokens.border}`, color: tokens.textTertiary, boxShadow: tokens.shadow.sm, '&:hover': { bgcolor: tokens.surface } }}>
             <Box sx={{ flex: 1, textAlign: 'start' }}>بحث سريع…</Box>

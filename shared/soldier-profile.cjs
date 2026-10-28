@@ -90,17 +90,20 @@ function buildQrPayload(soldier) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function buildVisitorQrPayload(visitor) {
-  // Numeric encoding survives USB scanners while the Windows keyboard is Arabic.
-  const hex = String(visitor.id).replaceAll('-', '');
-  if (!UUID_RE.test(String(visitor.id))) throw new Error('معرف الزائر غير صالح');
+/** Numeric encoding (2-digit prefix + 39 digits) survives USB scanners while the Windows keyboard is Arabic. */
+function uuidDigits(prefix, id, message) {
+  if (!UUID_RE.test(String(id))) throw new Error(message);
   return (
-    '99' +
-    BigInt('0x' + hex)
+    prefix +
+    BigInt('0x' + String(id).replaceAll('-', ''))
       .toString()
       .padStart(39, '0')
   );
 }
+
+const buildVisitorQrPayload = (visitor) => uuidDigits('99', visitor.id, 'معرف الزائر غير صالح');
+/** Printed visitor pass (a gate request approved by the unit). */
+const buildVisitorPassQrPayload = (pass) => uuidDigits('88', pass.id, 'معرف تصريح الزائر غير صالح');
 
 function parseGateScan(raw) {
   const text = String(raw ?? '')
@@ -122,11 +125,12 @@ function parseGateScan(raw) {
     }
   }
   // 41 digits cannot collide with military numbers (at most 30 digits).
-  if (/^99[0-9]{39}$/.test(text)) {
+  // 99… = visitor badge, 88… = printed visitor pass (gate request approved by the unit).
+  if (/^(?:99|88)[0-9]{39}$/.test(text)) {
     const hex = BigInt(text.slice(2)).toString(16).padStart(32, '0');
     if (hex.length === 32) {
       const id = [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
-      return { kind: 'visitor', id };
+      return text.startsWith('88') ? { kind: 'visitor-pass', id } : { kind: 'visitor', id };
     }
     return { kind: 'none' };
   }
@@ -153,6 +157,7 @@ module.exports = {
   gateProfileRows,
   buildQrPayload,
   buildVisitorQrPayload,
+  buildVisitorPassQrPayload,
   parseGateScan,
   parseQrScan,
   computeAge,

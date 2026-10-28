@@ -32,6 +32,7 @@ import type {
   UserRow,
   Visitor,
   VisitorCard,
+  VisitorPass,
   PersonnelRecord,
 } from './types';
 
@@ -61,6 +62,8 @@ export const api = {
   gateVisitor: (id: string) => get<GateVisitorResponse>(`/api/gate/visitor${qs({ id })}`),
   visitorCards: () => get<{ cards: VisitorCard[] }>('/api/visitor-cards').then(r => r.cards),
   visitorCard: (cardNo: number) => get<VisitorCard>(`/api/gate/visitor-card${qs({ cardNo })}`),
+  visitorPasses: () => get<{ passes: VisitorPass[] }>('/api/visitor-passes').then(r => r.passes),
+  visitorPass: (id: string) => get<VisitorPass>(`/api/visitor-pass${qs({ id })}`),
   attachment: (id: string) => get<AttachmentFile>(`/api/attachment${qs({ id })}`),
   gateMove: (body: GateMovementBody, requestId: string) => post<GateMovementResult>('/api/gate', body, requestId),
   gateVisitorMove: (

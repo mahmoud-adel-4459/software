@@ -94,6 +94,7 @@ function receiptStylesheet(cfg, calibration = false) {
     '.sign span{display:flex;align-items:flex-end;gap:1.5mm}',
     '.sign i{flex:1 1 auto;min-width:8mm;border-bottom:1px solid #000;height:1em}',
     '.foot{margin-top:2mm;padding-top:1.5mm;border-top:1px dashed #000;text-align:center;font-size:.9em}',
+    '.pass-qr{width:38mm;height:38mm;max-width:100%;display:block;margin:1.5mm auto;image-rendering:pixelated}',
     // calibration
     '.cal svg{display:block;margin:0 0 1.5mm}',
     `.cal .box{width:${cfg.contentMm}mm;margin:0 auto}`,

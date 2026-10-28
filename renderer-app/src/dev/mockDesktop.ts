@@ -3,7 +3,7 @@
  * Used by `npm run dev` (browser, no Electron) and by the vitest suites. Never bundled into production.
  */
 import type {
-  AppInfo, BackupItem, BridgeResult, Catalog, DashboardData, ExcelImportFile, ExcelWorkbookArg, Outlet, DesktopBridge, GateMovementResult, Permit, Role, DeviceKind, Session, Soldier, Visitor, VisitorCard, PersonnelRecord,
+  AppInfo, BackupItem, BridgeResult, Catalog, DashboardData, ExcelImportFile, ExcelWorkbookArg, Outlet, DesktopBridge, GateMovementResult, Permit, Role, DeviceKind, Session, Soldier, Visitor, VisitorCard, VisitorPass, PersonnelRecord,
 } from '@/api/types';
 
 export interface FakeCall { method: string; path: string; data?: unknown; requestId?: string }
@@ -87,6 +87,7 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
     backups: [{ id: `${uuid()}.mab`, createdAt: '2026-10-20T09:00:00.000Z', size: 245760 }] as BackupItem[],
   };
   const visitorCards: VisitorCard[] = Array.from({ length: 24 }, (_, i) => ({ cardNo: i + 1, openVisit: null }));
+  const visitorPasses: VisitorPass[] = [];
   const personnelRecords: PersonnelRecord[] = [];
   const fake: FakeDesktop = {
     calls: [], documents: [], testPrints: [], excelFiles: [], nextImport: null, outlets, state, failures: { ...(options.failures ?? {}) },
@@ -143,6 +144,11 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
             return s ? ok({ soldier: s, photos: [{ id: 'att-1', kind: 'photo', mime: 'image/png' }] }) : fail('لا يوجد عسكري بهذا الرقم', 404);
           }
           case '/api/visitor-cards': return ok({ cards: visitorCards });
+          case '/api/visitor-passes': return ok({ passes: visitorPasses });
+          case '/api/visitor-pass': {
+            const pass = visitorPasses.find(p => p.id === params.get('id'));
+            return pass ? ok(pass) : fail('تصريح الزائر غير موجود', 404);
+          }
           case '/api/soldier/records': return ok({ records: personnelRecords.filter(r => r.soldier_id === params.get('soldierId')) });
           case '/api/gate/visitor-card': return ok(visitorCards.find(c => c.cardNo === Number(params.get('cardNo'))));
           case '/api/gate/visitor': return ok({ visitor: { ...state.visitors[0], category_id: 'c1', category_disabled: false }, openVisit: null });
@@ -175,6 +181,25 @@ export function createFakeDesktop(options: FakeOptions = {}): FakeDesktop {
           if (index < 0) return fail('Not found', 404);
           personnelRecords.splice(index, 1);
           return ok({ id: body.id });
+        }
+        case '/api/gate/visitor-passes': {
+          const now = new Date().toISOString();
+          const pass: VisitorPass = { id: uuid(), no: visitorPasses.length + 1, name: String(body.name), national_id: String(body.nationalId ?? ''),
+            phone: String(body.phone ?? ''), organization: String(body.organization ?? ''), category_id: String(body.categoryId), category_name: 'زائر عادي',
+            category_tier: 'normal', host: String(body.host ?? ''), purpose: String(body.purpose), status: 'pending', expired: false, expires_at: null,
+            requested_at: now, requested_by_name: session.user.name, decided_at: null, decided_by_name: '', decision_notes: '', check_in: null, check_out: null };
+          visitorPasses.unshift(pass);
+          return ok({ id: pass.id, no: pass.no });
+        }
+        case '/api/visitor-passes/decide': case '/api/gate/visitor-passes/cancel': case '/api/gate/visitor-pass': {
+          const pass = visitorPasses.find(p => p.id === body.id);
+          if (!pass) return fail('تصريح الزائر غير موجود', 404);
+          const now = new Date().toISOString();
+          if (route === '/api/visitor-passes/decide') Object.assign(pass, { status: body.decision === 'approve' ? 'approved' : 'rejected', decided_at: now, decided_by_name: session.user.name, decision_notes: String(body.notes ?? '') });
+          else if (route.endsWith('/cancel')) pass.status = 'cancelled';
+          else if (body.action === 'in') Object.assign(pass, { status: 'inside', check_in: now });
+          else Object.assign(pass, { status: 'completed', check_out: now });
+          return ok({ id: pass.id, status: pass.status });
         }
         case '/api/gate/visitor-card': {
           const d = data as { cardNo: number; action: string; visitId?: string; name: string; nationalId: string; phone: string; organization: string; notes: string; purpose: string };

@@ -15,6 +15,7 @@ import ScrollIcon from '@mui/icons-material/HistoryEduOutlined';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import ShieldIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import BadgeIcon from '@mui/icons-material/BadgeOutlined';
+import VisitorRequestIcon from '@mui/icons-material/HowToRegOutlined';
 import type { ElementType } from 'react';
 import type { Session } from '@/api/types';
 
@@ -40,6 +41,7 @@ const item = (key: string, to: string, label: string, hint: string, icon: Elemen
 
 const GATE = item('gate', '/gate', 'البوابة', 'محطة المسح وتسجيل الخروج والدخول', GateIcon);
 const MOVEMENTS = item('movements', '/movements', 'حركات البوابة', 'أحدث التصاريح وحالة العودة', ActivityIcon);
+const GATE_VISITORS = item('gate-visitors', '/gate/visitors', 'طلبات الزوار', 'إرسال بيانات الزائر للوحدة ومتابعة التصريح', VisitorRequestIcon);
 const CANTEEN = item('canteen', '/canteen', 'الكانتين', 'مشتريات وكشف شهري للكانتين', CartIcon);
 const BUFFET = item('buffet', '/buffet', 'البوفيه', 'مشتريات وكشف شهري للبوفيه', CoffeeIcon);
 
@@ -50,7 +52,7 @@ export const isInternalStaff = (s: Session | null): boolean => isAdmin(s) || isC
 /** Sidebar groups by role/device (same rules as the legacy navGroups()). */
 export function navSections(session: Session | null): NavSection[] {
   if (!session) return [];
-  if (!isInternalStaff(session)) return [{ label: 'التشغيل', items: [GATE, MOVEMENTS] }];
+  if (!isInternalStaff(session)) return [{ label: 'التشغيل', items: [GATE, GATE_VISITORS, MOVEMENTS] }];
   if (isClerk(session)) {
     return [
       {
@@ -67,6 +69,7 @@ export function navSections(session: Session | null): NavSection[] {
         item('soldiers', '/soldiers', 'العسكريون', 'بحث الأفراد وملفاتهم ورموز QR', PeopleIcon),
         item('new', '/soldiers/new', 'إضافة عسكري', 'تسجيل ملف عسكري جديد', PersonAddIcon),
         item('visitors', '/visitors', 'الزوار', 'بطاقات الزوار وفئاتهم', BadgeIcon),
+        item('visitor-passes', '/visitor-passes', 'تصاريح الزوار', 'اعتماد طلبات البوابة وطباعة تصريح الدخول', VisitorRequestIcon),
       ],
     },
     {
