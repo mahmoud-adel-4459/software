@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
+import type { DocumentArg } from '@/api/types';
 import { renderApp } from './harness';
 import { parseGateScan } from '@/lib/soldierProfile';
 
@@ -34,8 +35,8 @@ it('unit approves a pending request and the pass is printed', async () => {
   await fake.request('POST', '/api/gate/visitor-passes', { name: 'زائر معلق', categoryId: 'c1', purpose: 'تسليم', host: '' }, crypto.randomUUID());
   await userEvent.click(await screen.findByRole('button', { name: 'تحديث البيانات' }));
   await userEvent.click(await screen.findByRole('button', { name: /اعتماد وطباعة التصريح/ }));
-  await waitFor(() => expect(fake.documents.some(d => d.type === 'visitor-pass')).toBe(true));
+  await waitFor(() => expect((fake.documents as DocumentArg[]).some(d => d.type === 'visitor-pass')).toBe(true));
   const decide = fake.calls.find(c => c.method === 'POST' && c.path === '/api/visitor-passes/decide')!;
   expect(decide.data).toMatchObject({ decision: 'approve' });
-  expect(fake.documents.find(d => d.type === 'visitor-pass')).toMatchObject({ id: (decide.data as { id: string }).id, mode: 'print' });
+  expect((fake.documents as DocumentArg[]).find(d => d.type === 'visitor-pass')).toMatchObject({ id: (decide.data as { id: string }).id, mode: 'print' });
 });
